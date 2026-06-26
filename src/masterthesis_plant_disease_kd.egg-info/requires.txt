@@ -1,0 +1,17 @@
+timm
+pandas
+numpy
+scikit-learn
+Pillow
+tqdm
+matplotlib
+mlflow
+torchinfo
+
+[dev]
+ruff
+pytest
+
+[torch-cpu]
+torch
+torchvision

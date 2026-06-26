@@ -1,0 +1,4 @@
+[console_scripts]
+analyze-datasets = datasets.analyze_datasets:main
+create-splits = datasets.create_splits:main
+train-baseline = training.train_baseline:main

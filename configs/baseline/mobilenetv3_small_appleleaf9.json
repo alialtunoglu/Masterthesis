@@ -1,0 +1,17 @@
+{
+  "stage": "baseline",
+  "dataset_name": "appleleaf9",
+  "model_name": "mobilenet_v3_small",
+  "seed": 42,
+  "image_size": 224,
+  "batch_size": 32,
+  "epochs": 30,
+  "learning_rate": 0.001,
+  "weight_decay": 0.0001,
+  "pretrained": true,
+  "optimizer": "adamw",
+  "scheduler": "none",
+  "num_workers": 4,
+  "device": "auto",
+  "tracking_uri": "sqlite:///mlflow.db"
+}

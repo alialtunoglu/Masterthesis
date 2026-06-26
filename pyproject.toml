@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "masterthesis-plant-disease-kd"
+version = "0.1.0"
+description = "Knowledge distillation experiments for plant leaf disease diagnosis."
+readme = "docs/DATASETS.md"
+requires-python = ">=3.10,<3.13"
+authors = [
+  { name = "MasterThesis" }
+]
+dependencies = [
+  "timm",
+  "pandas",
+  "numpy",
+  "scikit-learn",
+  "Pillow",
+  "tqdm",
+  "matplotlib",
+  "mlflow",
+  "torchinfo",
+  "streamlit",
+  "psutil"
+]
+
+[project.optional-dependencies]
+torch-cpu = [
+  "torch",
+  "torchvision"
+]
+dev = [
+  "ruff",
+  "pytest"
+]
+
+[project.scripts]
+train-baseline = "training.train_baseline:main"
+analyze-datasets = "datasets.analyze_datasets:main"
+create-splits = "datasets.create_splits:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]

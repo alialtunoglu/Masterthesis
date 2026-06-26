@@ -1,0 +1,7 @@
+recommendation_type,selected_model,reason,avg_test_accuracy,avg_test_macro_f1,avg_model_size_mb,avg_params
+Best performance student,efficientnet_b0,Highest average test macro F1 across datasets.,0.973071337652025,0.963054387125802,15.534564971923828,4030179.0
+Best accuracy student,efficientnet_b0,Highest average test accuracy across datasets.,0.973071337652025,0.963054387125802,15.534564971923828,4030179.0
+Best lightweight student,mobilenet_v3_small,Smallest model within 0.02 average macro F1 of the best model.,0.9627726178782935,0.9527103969049032,5.905701955159505,1535964.3333333333
+Recommended KD student,mobilenet_v3_small,"MobileNetV3-Small is the lightest student and stays within 0.02 avg macro F1 of the best model, making KD gains easier to interpret.",0.9627726178782935,0.9527103969049032,5.905701955159505,1535964.3333333333
+Strong compact baseline,efficientnet_b0,Compact but stronger reference student for secondary KD comparisons.,0.973071337652025,0.963054387125802,15.534564971923828,4030179.0
+Best performance-size balance,mobilenet_v3_small,Highest avg_test_macro_f1 / avg_model_size_mb score.,0.9627726178782935,0.9527103969049032,5.905701955159505,1535964.3333333333
