@@ -75,6 +75,21 @@ class PortableNotebookTests(unittest.TestCase):
         self.assertIn(download, source)
         self.assertLess(source.index(ready_check), source.index(download))
 
+    def test_colab_is_not_detected_from_kaggle_input_directory(self):
+        source = _notebook_source(
+            build_portable_notebook(
+                repository_url="https://github.com/example/project.git",
+                source_commit="abc123",
+                stage="teacher",
+                dataset="plantpathology2021",
+                model="resnet50",
+                command=["python", "src/training/train_teacher.py", "--config", "config.json"],
+            )
+        )
+
+        self.assertNotIn("if Path('/kaggle/input').exists()", source)
+        self.assertIn("KAGGLE_KERNEL_RUN_TYPE", source)
+
     def test_export_is_disabled_without_origin(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

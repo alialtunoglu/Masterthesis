@@ -87,7 +87,11 @@ if not all(path.exists() for path in required):
                 destination.symlink_to(source, target_is_directory=source.is_dir())
         print(f'Kaggle input kullanılıyor: {mounted}')
     else:
-        if Path('/kaggle/input').exists():
+        is_kaggle_notebook = any(
+            os.environ.get(name)
+            for name in ('KAGGLE_KERNEL_RUN_TYPE', 'KAGGLE_URL_BASE', 'KAGGLE_DATA_PROXY_URL')
+        )
+        if is_kaggle_notebook:
             raise RuntimeError(
                 'Kaggle Notebook içinde Add Input ile Plant Pathology 2021 - FGVC8 '
                 'yarışma verisini ekleyip hücreyi yeniden çalıştırın.'
