@@ -177,10 +177,27 @@ os.chdir('MasterThesis')
 subprocess.run(['git', 'checkout', {source_commit!r}], check=True)
 subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '-e', '.'], check=True)
 """
-    train = f"""import subprocess, sys
+    train = f"""from pathlib import Path
+import os, subprocess, sys
 command = {run_command!r}
 command[0] = sys.executable
-subprocess.run(command, check=True)
+environment = os.environ.copy()
+project_src = str(Path('src').resolve())
+existing_pythonpath = environment.get('PYTHONPATH')
+environment['PYTHONPATH'] = (
+    project_src if not existing_pythonpath else project_src + os.pathsep + existing_pythonpath
+)
+result = subprocess.run(
+    command,
+    env=environment,
+    text=True,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+)
+if result.stdout:
+    print(result.stdout)
+if result.returncode:
+    raise RuntimeError(f'Eğitim başarısız oldu. Exit code: {{result.returncode}}')
 """
     package = f"""import subprocess, sys
 subprocess.run([
