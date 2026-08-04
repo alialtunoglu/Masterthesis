@@ -1,0 +1,907 @@
+{
+  ".codebase-memory/artifact.json": {
+    "mtime": 1784012588.1930299,
+    "ast_hash": "c23b23293677e449530ab501af91b717",
+    "semantic_hash": "c23b23293677e449530ab501af91b717"
+  },
+  "app/dashboard_settings.json": {
+    "mtime": 1782392710.0,
+    "ast_hash": "5bb789351ef65776b0fe096b4526c9bc",
+    "semantic_hash": "5bb789351ef65776b0fe096b4526c9bc"
+  },
+  "app/experiment_runner.py": {
+    "mtime": 1785843074.8025768,
+    "ast_hash": "226235d58c46e1ee5a2d209495f5da2d",
+    "semantic_hash": ""
+  },
+  "app/pages/1_Dashboard.py": {
+    "mtime": 1785843295.0598762,
+    "ast_hash": "77ae3e8e55a895727b5761ac7d5c7e2a",
+    "semantic_hash": ""
+  },
+  "app/pages/2_Baseline_Experiments.py": {
+    "mtime": 1785842846.723076,
+    "ast_hash": "b0bb6a22768534745a9056378cb916f4",
+    "semantic_hash": ""
+  },
+  "app/pages/3_Job_Monitor.py": {
+    "mtime": 1785842654.7916167,
+    "ast_hash": "e892065ecb7ce45a2c60a7db79349a87",
+    "semantic_hash": ""
+  },
+  "app/pages/4_Results_Explorer.py": {
+    "mtime": 1785843295.061875,
+    "ast_hash": "b1edda7b765e69008766a52c4d05002f",
+    "semantic_hash": ""
+  },
+  "app/pages/5_CNN_Teacher_Experiments.py": {
+    "mtime": 1785842846.7219584,
+    "ast_hash": "9ec707912cb950167e18178833d54f91",
+    "semantic_hash": ""
+  },
+  "app/pages/6_MLflow_Helper.py": {
+    "mtime": 1782368262.0,
+    "ast_hash": "5b189d6accb36540615e71ab4473bbe2",
+    "semantic_hash": "5b189d6accb36540615e71ab4473bbe2"
+  },
+  "app/queue_worker.py": {
+    "mtime": 1782467834.0,
+    "ast_hash": "105ae9d31ee5ee89f283a208617ccda0",
+    "semantic_hash": "105ae9d31ee5ee89f283a208617ccda0"
+  },
+  "app/result_loader.py": {
+    "mtime": 1782479536.0,
+    "ast_hash": "4609b4a93dc37a36b5e0f37a202a7b4f",
+    "semantic_hash": "4609b4a93dc37a36b5e0f37a202a7b4f"
+  },
+  "app/streamlit_app.py": {
+    "mtime": 1785842654.7906184,
+    "ast_hash": "829de6956dadb8d2a4000a35504c64f5",
+    "semantic_hash": ""
+  },
+  "app/ui_utils.py": {
+    "mtime": 1784271515.1090093,
+    "ast_hash": "0369fb404e262b0e3e94412942c362d6",
+    "semantic_hash": ""
+  },
+  "configs/baseline/efficientnet_b0_appleleaf9.json": {
+    "mtime": 1782388994.0,
+    "ast_hash": "5662c76e11379a8658765ebc11339c63",
+    "semantic_hash": "5662c76e11379a8658765ebc11339c63"
+  },
+  "configs/baseline/efficientnet_b0_plantpathology2021.json": {
+    "mtime": 1782389004.0,
+    "ast_hash": "e03bedfef7411455e53e5422340ca829",
+    "semantic_hash": "e03bedfef7411455e53e5422340ca829"
+  },
+  "configs/baseline/efficientnet_b0_plantvillage.json": {
+    "mtime": 1782389000.0,
+    "ast_hash": "1ae1649f8f3f3b20e89816693395e241",
+    "semantic_hash": "1ae1649f8f3f3b20e89816693395e241"
+  },
+  "configs/baseline/mobilenetv3_large_appleleaf9.json": {
+    "mtime": 1782388992.0,
+    "ast_hash": "c696783bd97026fc4edd539df4257ed9",
+    "semantic_hash": "c696783bd97026fc4edd539df4257ed9"
+  },
+  "configs/baseline/mobilenetv3_large_plantpathology2021.json": {
+    "mtime": 1782389002.0,
+    "ast_hash": "9943e25a5376ed015c13400d88e9f280",
+    "semantic_hash": "9943e25a5376ed015c13400d88e9f280"
+  },
+  "configs/baseline/mobilenetv3_large_plantvillage.json": {
+    "mtime": 1782388998.0,
+    "ast_hash": "730d018836763d8161be10efb739a362",
+    "semantic_hash": "730d018836763d8161be10efb739a362"
+  },
+  "configs/baseline/mobilenetv3_small_appleleaf9.json": {
+    "mtime": 1782388990.0,
+    "ast_hash": "694552d79debab7c1fa58ff929d1960d",
+    "semantic_hash": "694552d79debab7c1fa58ff929d1960d"
+  },
+  "configs/baseline/mobilenetv3_small_plantpathology2021.json": {
+    "mtime": 1782389002.0,
+    "ast_hash": "f5f8bd46e66db489d8aa7eb991580ccf",
+    "semantic_hash": "f5f8bd46e66db489d8aa7eb991580ccf"
+  },
+  "configs/baseline/mobilenetv3_small_plantvillage.json": {
+    "mtime": 1782388998.0,
+    "ast_hash": "df61e45542e9046954f640271107db39",
+    "semantic_hash": "df61e45542e9046954f640271107db39"
+  },
+  "configs/baseline/resnet18_appleleaf9.json": {
+    "mtime": 1782388996.0,
+    "ast_hash": "57f11c034516db640d91d9d7afd8fe9a",
+    "semantic_hash": "57f11c034516db640d91d9d7afd8fe9a"
+  },
+  "configs/baseline/resnet18_plantpathology2021.json": {
+    "mtime": 1782389004.0,
+    "ast_hash": "11e42054d81b90258c5ef79db19c825f",
+    "semantic_hash": "11e42054d81b90258c5ef79db19c825f"
+  },
+  "configs/baseline/resnet18_plantvillage.json": {
+    "mtime": 1782389000.0,
+    "ast_hash": "6fcff6887e1435c4cc1d19b6e7a9f8fb",
+    "semantic_hash": "6fcff6887e1435c4cc1d19b6e7a9f8fb"
+  },
+  "configs/teachers/cnn/appleleaf9/convnext_base.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "b35e3ae179e8d49af17fbbab98404387",
+    "semantic_hash": "b35e3ae179e8d49af17fbbab98404387"
+  },
+  "configs/teachers/cnn/appleleaf9/convnext_tiny.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "e494f8a1d121691efa25da81e211ffce",
+    "semantic_hash": "e494f8a1d121691efa25da81e211ffce"
+  },
+  "configs/teachers/cnn/appleleaf9/densenet121.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "44f40d42844211eb5b2de2ae14ed608c",
+    "semantic_hash": "44f40d42844211eb5b2de2ae14ed608c"
+  },
+  "configs/teachers/cnn/appleleaf9/densenet201.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "f994b687a21017647fb66e3b5beebdb3",
+    "semantic_hash": "f994b687a21017647fb66e3b5beebdb3"
+  },
+  "configs/teachers/cnn/appleleaf9/efficientnet_b3.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "ffd5834d4b634b9f26f1a6366768baab",
+    "semantic_hash": "ffd5834d4b634b9f26f1a6366768baab"
+  },
+  "configs/teachers/cnn/appleleaf9/efficientnet_b4.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "c37e37500b179c361e5805d914ddf182",
+    "semantic_hash": "c37e37500b179c361e5805d914ddf182"
+  },
+  "configs/teachers/cnn/appleleaf9/regnet_y_8gf.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "577ba0f0130ee23a4da21cfd484f56d6",
+    "semantic_hash": "577ba0f0130ee23a4da21cfd484f56d6"
+  },
+  "configs/teachers/cnn/appleleaf9/resnet101.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "58d4e5e99d5e788a3f04336a272a228e",
+    "semantic_hash": "58d4e5e99d5e788a3f04336a272a228e"
+  },
+  "configs/teachers/cnn/appleleaf9/resnet50.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "f70f0e27d8e55027d64c5e87ada7e60a",
+    "semantic_hash": "f70f0e27d8e55027d64c5e87ada7e60a"
+  },
+  "configs/teachers/cnn/appleleaf9/vgg19_bn.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "f83cd198fa1dacb359407cfcbeed397d",
+    "semantic_hash": "f83cd198fa1dacb359407cfcbeed397d"
+  },
+  "configs/teachers/cnn/plantpathology2021/convnext_base.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "c8aa5c42c66923eab76db16fd45686d5",
+    "semantic_hash": "c8aa5c42c66923eab76db16fd45686d5"
+  },
+  "configs/teachers/cnn/plantpathology2021/convnext_tiny.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "97bffb03f9d4c3b8a2ad675e2509d1f5",
+    "semantic_hash": "97bffb03f9d4c3b8a2ad675e2509d1f5"
+  },
+  "configs/teachers/cnn/plantpathology2021/densenet121.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "19947e09d0dd02f814eedcd212337cbd",
+    "semantic_hash": "19947e09d0dd02f814eedcd212337cbd"
+  },
+  "configs/teachers/cnn/plantpathology2021/densenet201.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "25abc7d66ff29ba729ee5345c1dbc262",
+    "semantic_hash": "25abc7d66ff29ba729ee5345c1dbc262"
+  },
+  "configs/teachers/cnn/plantpathology2021/efficientnet_b3.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "b1a96cde8ceeeed45aa600b76ef7390a",
+    "semantic_hash": "b1a96cde8ceeeed45aa600b76ef7390a"
+  },
+  "configs/teachers/cnn/plantpathology2021/efficientnet_b4.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "efc981e7fdd898cacc56138130c3317f",
+    "semantic_hash": "efc981e7fdd898cacc56138130c3317f"
+  },
+  "configs/teachers/cnn/plantpathology2021/regnet_y_8gf.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "e4497b8991100eca48a0b1bb5b943522",
+    "semantic_hash": "e4497b8991100eca48a0b1bb5b943522"
+  },
+  "configs/teachers/cnn/plantpathology2021/resnet101.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "4f04d9ab2a0e869c415ec54f734c6226",
+    "semantic_hash": "4f04d9ab2a0e869c415ec54f734c6226"
+  },
+  "configs/teachers/cnn/plantpathology2021/resnet50.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "f634875152c44ff6fcb81b3ed68f1a17",
+    "semantic_hash": "f634875152c44ff6fcb81b3ed68f1a17"
+  },
+  "configs/teachers/cnn/plantpathology2021/vgg19_bn.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "3381a38abe9d06d4578bf2c280225e18",
+    "semantic_hash": "3381a38abe9d06d4578bf2c280225e18"
+  },
+  "configs/teachers/cnn/plantvillage/convnext_base.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "4f2b7a5dfe531261c54be71f417762c3",
+    "semantic_hash": "4f2b7a5dfe531261c54be71f417762c3"
+  },
+  "configs/teachers/cnn/plantvillage/convnext_tiny.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "76b298cd1aee55fd734040ed2e5ffe26",
+    "semantic_hash": "76b298cd1aee55fd734040ed2e5ffe26"
+  },
+  "configs/teachers/cnn/plantvillage/densenet121.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "7ce02bbd7ebd5d87faf5bcbec70972e2",
+    "semantic_hash": "7ce02bbd7ebd5d87faf5bcbec70972e2"
+  },
+  "configs/teachers/cnn/plantvillage/densenet201.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "1e4a8be0da1ab0e27c10fca56ee50f96",
+    "semantic_hash": "1e4a8be0da1ab0e27c10fca56ee50f96"
+  },
+  "configs/teachers/cnn/plantvillage/efficientnet_b3.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "22846dc455aeb3dd79407e63d45807e6",
+    "semantic_hash": "22846dc455aeb3dd79407e63d45807e6"
+  },
+  "configs/teachers/cnn/plantvillage/efficientnet_b4.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "d5b21bd58e5449d37cd8ff5bc601a8ef",
+    "semantic_hash": "d5b21bd58e5449d37cd8ff5bc601a8ef"
+  },
+  "configs/teachers/cnn/plantvillage/regnet_y_8gf.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "c18ec2a023d7e3bba1b1604cefaa93f8",
+    "semantic_hash": "c18ec2a023d7e3bba1b1604cefaa93f8"
+  },
+  "configs/teachers/cnn/plantvillage/resnet101.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "875e5ac2f971f45b676a872e060fa01a",
+    "semantic_hash": "875e5ac2f971f45b676a872e060fa01a"
+  },
+  "configs/teachers/cnn/plantvillage/resnet50.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "8855e627ac56c07200d216d3f3936c27",
+    "semantic_hash": "8855e627ac56c07200d216d3f3936c27"
+  },
+  "configs/teachers/cnn/plantvillage/vgg19_bn.json": {
+    "mtime": 1782883118.0,
+    "ast_hash": "1631959aa184015b76912214b19fffda",
+    "semantic_hash": "1631959aa184015b76912214b19fffda"
+  },
+  "pyproject.toml": {
+    "mtime": 1782368050.0,
+    "ast_hash": "ba6d4598df8bb7f7feac610a341f01ad",
+    "semantic_hash": "ba6d4598df8bb7f7feac610a341f01ad"
+  },
+  "runs/queue_worker.json": {
+    "mtime": 1784701285.4264383,
+    "ast_hash": "2578e94d1530bca191254b5692e470cf",
+    "semantic_hash": ""
+  },
+  "runs/queue_worker_heartbeat.json": {
+    "mtime": 1784755201.861684,
+    "ast_hash": "fa6516bc9117c1b2a27889da4cbf4c56",
+    "semantic_hash": ""
+  },
+  "scripts/analyze_student_baselines.py": {
+    "mtime": 1782478896.0,
+    "ast_hash": "f66bd1328b7aef226b797becffdbd2b1",
+    "semantic_hash": "f66bd1328b7aef226b797becffdbd2b1"
+  },
+  "scripts/reset_experiments.py": {
+    "mtime": 1782392386.0,
+    "ast_hash": "a3b08aa374ac9b093a06028851bb6d3b",
+    "semantic_hash": "a3b08aa374ac9b093a06028851bb6d3b"
+  },
+  "splits/appleleaf9_seed42_70_15_15.json": {
+    "mtime": 1782340020.0,
+    "ast_hash": "d0610a104117017feaee7f152b2924cf",
+    "semantic_hash": "d0610a104117017feaee7f152b2924cf"
+  },
+  "splits/plantpathology2021_seed42_70_15_15.json": {
+    "mtime": 1782340022.0,
+    "ast_hash": "3689169461564bb241925568b09c97e8",
+    "semantic_hash": "3689169461564bb241925568b09c97e8"
+  },
+  "splits/plantvillage_seed42_70_15_15.json": {
+    "mtime": 1782340018.0,
+    "ast_hash": "699ee462dd8f6c269118452cd0aceb08",
+    "semantic_hash": "699ee462dd8f6c269118452cd0aceb08"
+  },
+  "src/__init__.py": {
+    "mtime": 1782340062.0,
+    "ast_hash": "1d4bd0a9ea3db4c4e1594201bf0511fe",
+    "semantic_hash": "1d4bd0a9ea3db4c4e1594201bf0511fe"
+  },
+  "src/datasets/__init__.py": {
+    "mtime": 1782340064.0,
+    "ast_hash": "00fa0a73dd10e96f4e4bc1ff0158b8ec",
+    "semantic_hash": "00fa0a73dd10e96f4e4bc1ff0158b8ec"
+  },
+  "src/datasets/analyze_datasets.py": {
+    "mtime": 1782339982.0,
+    "ast_hash": "cf42f4604ae004e6c039fab483f02a3e",
+    "semantic_hash": "cf42f4604ae004e6c039fab483f02a3e"
+  },
+  "src/datasets/create_splits.py": {
+    "mtime": 1782339982.0,
+    "ast_hash": "c492d9ff7774a23074e6c784446639a2",
+    "semantic_hash": "c492d9ff7774a23074e6c784446639a2"
+  },
+  "src/datasets/dataloaders.py": {
+    "mtime": 1782340506.0,
+    "ast_hash": "815a346179e373584f6644d7a32332af",
+    "semantic_hash": "815a346179e373584f6644d7a32332af"
+  },
+  "src/datasets/dataset_registry.py": {
+    "mtime": 1782339978.0,
+    "ast_hash": "d01ed7461f5a48b7a154a69ac02265e0",
+    "semantic_hash": "d01ed7461f5a48b7a154a69ac02265e0"
+  },
+  "src/datasets/imagefolder_utils.py": {
+    "mtime": 1782339980.0,
+    "ast_hash": "391d1cb3370dcac7b741361b4bd576c2",
+    "semantic_hash": "391d1cb3370dcac7b741361b4bd576c2"
+  },
+  "src/datasets/plantpathology_utils.py": {
+    "mtime": 1782340066.0,
+    "ast_hash": "e5d078e133f498d166539a6eb238a5cb",
+    "semantic_hash": "e5d078e133f498d166539a6eb238a5cb"
+  },
+  "src/datasets/torch_datasets.py": {
+    "mtime": 1782340504.0,
+    "ast_hash": "bbea4e6d1691d195dc3f158b256be358",
+    "semantic_hash": "bbea4e6d1691d195dc3f158b256be358"
+  },
+  "src/evaluation/__init__.py": {
+    "mtime": 1782340504.0,
+    "ast_hash": "fc547107e880fa12aaabe40eabcfe36c",
+    "semantic_hash": "fc547107e880fa12aaabe40eabcfe36c"
+  },
+  "src/evaluation/metrics.py": {
+    "mtime": 1782340504.0,
+    "ast_hash": "061a72134099975170a4f67995a85e07",
+    "semantic_hash": "061a72134099975170a4f67995a85e07"
+  },
+  "src/evaluation/reports.py": {
+    "mtime": 1782343892.0,
+    "ast_hash": "f2dbcbf23db36cecf1e725d5f190bd00",
+    "semantic_hash": "f2dbcbf23db36cecf1e725d5f190bd00"
+  },
+  "src/models/__init__.py": {
+    "mtime": 1782340500.0,
+    "ast_hash": "57213a24c3efb9e4b247b5415d83e419",
+    "semantic_hash": "57213a24c3efb9e4b247b5415d83e419"
+  },
+  "src/models/model_factory.py": {
+    "mtime": 1785842457.166684,
+    "ast_hash": "646065b4317c104f4338612a657a5570",
+    "semantic_hash": ""
+  },
+  "src/models/model_info.py": {
+    "mtime": 1784625769.8393397,
+    "ast_hash": "9dc2731ee2dd0c2a322e2ad8c0b0d0aa",
+    "semantic_hash": ""
+  },
+  "src/tracking/__init__.py": {
+    "mtime": 1782340498.0,
+    "ast_hash": "f839eba4b0d08ed81997c4a8cae77d8d",
+    "semantic_hash": "f839eba4b0d08ed81997c4a8cae77d8d"
+  },
+  "src/tracking/experiment_naming.py": {
+    "mtime": 1782340498.0,
+    "ast_hash": "5c24fab43f6f8e961ba071cdabc4ac9c",
+    "semantic_hash": "5c24fab43f6f8e961ba071cdabc4ac9c"
+  },
+  "src/tracking/mlflow_tracker.py": {
+    "mtime": 1784791860.545163,
+    "ast_hash": "d23638b7984cbacb895100fa784b4f84",
+    "semantic_hash": ""
+  },
+  "src/training/__init__.py": {
+    "mtime": 1782340506.0,
+    "ast_hash": "a33db6e143a088693e231340f7aa29cf",
+    "semantic_hash": "a33db6e143a088693e231340f7aa29cf"
+  },
+  "src/training/train_baseline.py": {
+    "mtime": 1784620364.1269033,
+    "ast_hash": "3ffbf76c8688ef251b2f61271b5fad03",
+    "semantic_hash": ""
+  },
+  "src/training/train_teacher.py": {
+    "mtime": 1785843591.8276093,
+    "ast_hash": "3e4a99ec43c92bdb00a81469905b036e",
+    "semantic_hash": ""
+  },
+  "src/training/trainer.py": {
+    "mtime": 1785843382.5369744,
+    "ast_hash": "55d0c62bbcacb1a921f7664d2bbcede7",
+    "semantic_hash": ""
+  },
+  "src/utils/__init__.py": {
+    "mtime": 1782340064.0,
+    "ast_hash": "e710a9eae1cdb61518fd0fbf4f8f662a",
+    "semantic_hash": "e710a9eae1cdb61518fd0fbf4f8f662a"
+  },
+  "src/utils/io.py": {
+    "mtime": 1782339978.0,
+    "ast_hash": "9c2a4e1c191988db14116cb23c672043",
+    "semantic_hash": "9c2a4e1c191988db14116cb23c672043"
+  },
+  "src/utils/seed.py": {
+    "mtime": 1782339976.0,
+    "ast_hash": "b2452a04164904accfc1c4e4ef8f05a9",
+    "semantic_hash": "b2452a04164904accfc1c4e4ef8f05a9"
+  },
+  ".agent/rules/00-project-principles.md": {
+    "mtime": 1782339270.0,
+    "ast_hash": "918bdcae1e8bb3abc56d06aee79527b7",
+    "semantic_hash": "918bdcae1e8bb3abc56d06aee79527b7"
+  },
+  ".agent/rules/10-clean-code.md": {
+    "mtime": 1782339270.0,
+    "ast_hash": "e5711dcfc9e1877f81b48b6c18258a26",
+    "semantic_hash": "e5711dcfc9e1877f81b48b6c18258a26"
+  },
+  ".agent/rules/20-clean-architecture.md": {
+    "mtime": 1782339270.0,
+    "ast_hash": "81828cff5b56e896d763e77f7abfd8ea",
+    "semantic_hash": "81828cff5b56e896d763e77f7abfd8ea"
+  },
+  ".agent/rules/30-ml-experiment-rules.md": {
+    "mtime": 1782340378.0,
+    "ast_hash": "0004388caa603ff77725adb5ccd61f28",
+    "semantic_hash": "0004388caa603ff77725adb5ccd61f28"
+  },
+  ".agent/rules/40-git-rules.md": {
+    "mtime": 1782339270.0,
+    "ast_hash": "8438aafa31a517b60ad4bc36785402ad",
+    "semantic_hash": "8438aafa31a517b60ad4bc36785402ad"
+  },
+  ".agent/skills/experiment-tracking-skill.md": {
+    "mtime": 1782340378.0,
+    "ast_hash": "905e959ed272435f18ceb059f7c729ca",
+    "semantic_hash": "905e959ed272435f18ceb059f7c729ca"
+  },
+  ".agent/skills/git-commit-skill.md": {
+    "mtime": 1782339270.0,
+    "ast_hash": "6b6dcfab88bfcfec02d772a2dfda1d1c",
+    "semantic_hash": "6b6dcfab88bfcfec02d772a2dfda1d1c"
+  },
+  ".agent/skills/python-project-skill.md": {
+    "mtime": 1782339270.0,
+    "ast_hash": "cf9e82034d7f02954e3d915d09b72ab4",
+    "semantic_hash": "cf9e82034d7f02954e3d915d09b72ab4"
+  },
+  ".agent/skills/pytorch-ml-skill.md": {
+    "mtime": 1782339270.0,
+    "ast_hash": "07a56864e6949eaa185850319e39e514",
+    "semantic_hash": "07a56864e6949eaa185850319e39e514"
+  },
+  ".agent/workflows/01-feature-development.md": {
+    "mtime": 1782339270.0,
+    "ast_hash": "a438b10a4a1c4f1467f2e209aa608d9e",
+    "semantic_hash": "a438b10a4a1c4f1467f2e209aa608d9e"
+  },
+  ".agent/workflows/02-dataset-pipeline.md": {
+    "mtime": 1782339270.0,
+    "ast_hash": "43fef1f0c3320dc9f52b355cd09f9b6d",
+    "semantic_hash": "43fef1f0c3320dc9f52b355cd09f9b6d"
+  },
+  ".agent/workflows/03-training-experiment.md": {
+    "mtime": 1782340378.0,
+    "ast_hash": "087cef782f06cadcf164bb8b0ed99711",
+    "semantic_hash": "087cef782f06cadcf164bb8b0ed99711"
+  },
+  ".agent/workflows/04-result-logging.md": {
+    "mtime": 1782339270.0,
+    "ast_hash": "cfb26d7831969f71bd7148386fafde63",
+    "semantic_hash": "cfb26d7831969f71bd7148386fafde63"
+  },
+  "README.md": {
+    "mtime": 1784792424.5493379,
+    "ast_hash": "6c7a2e81bd35ebf696f778a730f6cb71",
+    "semantic_hash": ""
+  },
+  "docs/CNN_TEACHERS.md": {
+    "mtime": 1782479536.0,
+    "ast_hash": "ea02be7c32e9919f845c556c59a0a420",
+    "semantic_hash": "ea02be7c32e9919f845c556c59a0a420"
+  },
+  "docs/DATASETS.md": {
+    "mtime": 1782339982.0,
+    "ast_hash": "5a3a758c4ccc22fb448ff8b1d3cac9d8",
+    "semantic_hash": "5a3a758c4ccc22fb448ff8b1d3cac9d8"
+  },
+  "docs/ENVIRONMENT.md": {
+    "mtime": 1782342622.0,
+    "ast_hash": "72a6e8839eacc943bf1c310935e4acee",
+    "semantic_hash": "72a6e8839eacc943bf1c310935e4acee"
+  },
+  "docs/EXPERIMENT_PLAN.md": {
+    "mtime": 1782478978.0,
+    "ast_hash": "60d9c222656b71a79ba21208c76870cf",
+    "semantic_hash": "60d9c222656b71a79ba21208c76870cf"
+  },
+  "docs/MLFLOW.md": {
+    "mtime": 1782343182.0,
+    "ast_hash": "0fe125a4f2be10a365b588142ac9728d",
+    "semantic_hash": "0fe125a4f2be10a365b588142ac9728d"
+  },
+  "docs/STUDENT_BASELINE_REPORT.md": {
+    "mtime": 1782478904.0,
+    "ast_hash": "7312665c881c3e5855ef06f19074ba45",
+    "semantic_hash": "7312665c881c3e5855ef06f19074ba45"
+  },
+  "docs/WEB_UI.md": {
+    "mtime": 1784626540.3239994,
+    "ast_hash": "4a2be04c4c9cad3751c0b583e1f49ceb",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-14-graphify-corpus-exclusions.md": {
+    "mtime": 1784017986.5173445,
+    "ast_hash": "cdca548d80e96a52256a5ce3dd42d60c",
+    "semantic_hash": "cdca548d80e96a52256a5ce3dd42d60c"
+  },
+  "docs/superpowers/specs/2026-07-14-graphify-corpus-exclusions-design.md": {
+    "mtime": 1784017803.3897545,
+    "ast_hash": "491739e8821dcd9917540c9c2cdc409c",
+    "semantic_hash": "491739e8821dcd9917540c9c2cdc409c"
+  },
+  "requirements.txt": {
+    "mtime": 1782368048.0,
+    "ast_hash": "d7b40938c86c9bfb63b3c78043ff0baa",
+    "semantic_hash": "d7b40938c86c9bfb63b3c78043ff0baa"
+  },
+  "app/experiment_removal.py": {
+    "mtime": 1785843120.017398,
+    "ast_hash": "8336f2faef06892fdea96e1bbf7c2a88",
+    "semantic_hash": ""
+  },
+  "tests/test_experiment_removal.py": {
+    "mtime": 1784626420.1143093,
+    "ast_hash": "e808fa9fafdfaf7ea40e5e632db916f6",
+    "semantic_hash": ""
+  },
+  "app/pages/7_Knowledge_Distillation.py": {
+    "mtime": 1784631044.9946265,
+    "ast_hash": "1aef2bea28cddaab71af7f300f3ef054",
+    "semantic_hash": ""
+  },
+  "configs/knowledge_distillation/plantpathology2021/feature_based/mobilenet_v3_small__densenet201.json": {
+    "mtime": 1784625960.4286819,
+    "ast_hash": "3763f9117e1ff722b5920f582c384160",
+    "semantic_hash": ""
+  },
+  "configs/knowledge_distillation/plantpathology2021/feature_based/mobilenet_v3_small__regnet_y_8gf.json": {
+    "mtime": 1784625960.4286819,
+    "ast_hash": "de535b2a70379dda48eaafc2ac6dde42",
+    "semantic_hash": ""
+  },
+  "configs/knowledge_distillation/plantpathology2021/feature_based/mobilenet_v3_small__resnet50.json": {
+    "mtime": 1784625960.4286819,
+    "ast_hash": "80a377f07aa4d2d9c056ea4e3ebd7f2f",
+    "semantic_hash": ""
+  },
+  "configs/knowledge_distillation/plantpathology2021/logit_based/mobilenet_v3_small__densenet201.json": {
+    "mtime": 1784625960.420392,
+    "ast_hash": "9dc70af4cef676e7277d428e3a5dc40d",
+    "semantic_hash": ""
+  },
+  "configs/knowledge_distillation/plantpathology2021/logit_based/mobilenet_v3_small__regnet_y_8gf.json": {
+    "mtime": 1784625960.426676,
+    "ast_hash": "4199f3d2d457867023e106f6abf8926a",
+    "semantic_hash": ""
+  },
+  "configs/knowledge_distillation/plantpathology2021/logit_based/mobilenet_v3_small__resnet50.json": {
+    "mtime": 1784625960.420392,
+    "ast_hash": "148f5fead9056c6be7bc851bec768dff",
+    "semantic_hash": ""
+  },
+  "configs/knowledge_distillation/plantpathology2021/relation_based/mobilenet_v3_small__densenet201.json": {
+    "mtime": 1784625960.430686,
+    "ast_hash": "319ad6c50d6e0c02f6811de9a72d20c4",
+    "semantic_hash": ""
+  },
+  "configs/knowledge_distillation/plantpathology2021/relation_based/mobilenet_v3_small__regnet_y_8gf.json": {
+    "mtime": 1784625960.430686,
+    "ast_hash": "e9f3e0dccf02481f5349b5ea5bd35610",
+    "semantic_hash": ""
+  },
+  "configs/knowledge_distillation/plantpathology2021/relation_based/mobilenet_v3_small__resnet50.json": {
+    "mtime": 1784625960.4286819,
+    "ast_hash": "574bc890962541b81e6c884c6d000ff0",
+    "semantic_hash": ""
+  },
+  "src/training/kd_config.py": {
+    "mtime": 1784626420.112301,
+    "ast_hash": "4d6a14e7f66237e6f71a033597dfa3bc",
+    "semantic_hash": ""
+  },
+  "src/training/kd_features.py": {
+    "mtime": 1784625706.1657734,
+    "ast_hash": "468d673414176ec805586432560a055b",
+    "semantic_hash": ""
+  },
+  "src/training/kd_strategies.py": {
+    "mtime": 1784625706.1657734,
+    "ast_hash": "c42e700b9e0d360ceb50c6dbfc92e4e8",
+    "semantic_hash": ""
+  },
+  "src/training/kd_trainer.py": {
+    "mtime": 1784706964.7453084,
+    "ast_hash": "9f4d2396160714919cd6de3ecdf97f2e",
+    "semantic_hash": ""
+  },
+  "src/training/optimization.py": {
+    "mtime": 1784625762.7133536,
+    "ast_hash": "32235435e73cc72ccb593e41b42f5eb0",
+    "semantic_hash": ""
+  },
+  "src/training/train_kd.py": {
+    "mtime": 1784625859.797559,
+    "ast_hash": "17b40efbdd2a3933d436fa10c6471554",
+    "semantic_hash": ""
+  },
+  "tests/test_knowledge_distillation.py": {
+    "mtime": 1784706964.7453084,
+    "ast_hash": "9f5b326c5325379a1074394e172a9dce",
+    "semantic_hash": ""
+  },
+  "documents/makale1.md": {
+    "mtime": 1784623419.0371175,
+    "ast_hash": "62a6e34cfad7a5fbcee93e675fe7ed64",
+    "semantic_hash": ""
+  },
+  "documents/makale2.md": {
+    "mtime": 1784623569.146047,
+    "ast_hash": "e325f46d15ce0dbe239bc48e05a85ad7",
+    "semantic_hash": ""
+  },
+  "documents/makale3.md": {
+    "mtime": 1784623620.8057313,
+    "ast_hash": "b400df3681fed548038ea960bcfd56be",
+    "semantic_hash": ""
+  },
+  "runs/configs/edba5b5f1f58.json": {
+    "mtime": 1784631172.3943937,
+    "ast_hash": "891ba623e444cb4c7ac082a4e139a766",
+    "semantic_hash": ""
+  },
+  "runs/configs/0ae23d7fb3df.json": {
+    "mtime": 1784701270.7417376,
+    "ast_hash": "d36c4f4bb8cec866c2ad5c3043b955da",
+    "semantic_hash": ""
+  },
+  "app/pages/8_Multi_Teacher_Knowledge_Distillation.py": {
+    "mtime": 1784792616.1171143,
+    "ast_hash": "17c2f15217218bf48af181443a1f77d4",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/feature_based/mobilenet_v3_small__densenet201+regnet_y_8gf+resnet50.json": {
+    "mtime": 1784791944.055513,
+    "ast_hash": "b926f06a136970fc973cff30ed219065",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/feature_based/mobilenet_v3_small__densenet201+regnet_y_8gf.json": {
+    "mtime": 1784791944.0545073,
+    "ast_hash": "dc40e06d0034e1286a78e5772dfab7e1",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/feature_based/mobilenet_v3_small__densenet201+resnet50.json": {
+    "mtime": 1784791944.046894,
+    "ast_hash": "fd46492c0620c695f839c8a8e00b8216",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/feature_based/mobilenet_v3_small__regnet_y_8gf+resnet50.json": {
+    "mtime": 1784791944.0545073,
+    "ast_hash": "f655f166c418b0eeb171b7bdf2f32503",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/logit_based/mobilenet_v3_small__densenet201+regnet_y_8gf+resnet50.json": {
+    "mtime": 1784791944.046894,
+    "ast_hash": "cc9c5f0fef354d0937f3de85332a9f84",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/logit_based/mobilenet_v3_small__densenet201+regnet_y_8gf.json": {
+    "mtime": 1784791944.046894,
+    "ast_hash": "0ecfc3d20ae2e635206f8e5c4b49c507",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/logit_based/mobilenet_v3_small__densenet201+resnet50.json": {
+    "mtime": 1784791944.046894,
+    "ast_hash": "aae030a215644d8e4445ec726897504c",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/logit_based/mobilenet_v3_small__regnet_y_8gf+resnet50.json": {
+    "mtime": 1784791944.046894,
+    "ast_hash": "482fc9346e97f14507a07acc57bd0854",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/relation_based/mobilenet_v3_small__densenet201+regnet_y_8gf+resnet50.json": {
+    "mtime": 1784791944.0575137,
+    "ast_hash": "5b81d382e4eba269d4c7e1324bed85ec",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/relation_based/mobilenet_v3_small__densenet201+regnet_y_8gf.json": {
+    "mtime": 1784791944.0565112,
+    "ast_hash": "c3efd05a81db8f172e677c8d7454606b",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/relation_based/mobilenet_v3_small__densenet201+resnet50.json": {
+    "mtime": 1784791944.055513,
+    "ast_hash": "082f46791943f556e617a9cd3f23c69e",
+    "semantic_hash": ""
+  },
+  "configs/multi_teacher_knowledge_distillation/plantpathology2021/relation_based/mobilenet_v3_small__regnet_y_8gf+resnet50.json": {
+    "mtime": 1784791944.0575137,
+    "ast_hash": "0a29a142ca13bc39e2e5a7bdb2630df9",
+    "semantic_hash": ""
+  },
+  "runs/configs/c604f8b192d5.json": {
+    "mtime": 1784722379.6849186,
+    "ast_hash": "002c3218b3cb7f21bbd06a0b210abed9",
+    "semantic_hash": ""
+  },
+  "runs/configs/d49c71a6d8ae.json": {
+    "mtime": 1784707370.721439,
+    "ast_hash": "d36c4f4bb8cec866c2ad5c3043b955da",
+    "semantic_hash": ""
+  },
+  "runs/configs/d928767ecea9.json": {
+    "mtime": 1784738766.8954093,
+    "ast_hash": "a43e00bea4867bdef4ae73621866f8aa",
+    "semantic_hash": ""
+  },
+  "src/training/multi_kd_aggregation.py": {
+    "mtime": 1784791746.4191132,
+    "ast_hash": "9cb857b30d84a445b262dba886441fc0",
+    "semantic_hash": ""
+  },
+  "src/training/multi_kd_config.py": {
+    "mtime": 1784792485.3382561,
+    "ast_hash": "4348575cfbd924349ee091e63f585ede",
+    "semantic_hash": ""
+  },
+  "src/training/multi_kd_strategies.py": {
+    "mtime": 1784791746.422404,
+    "ast_hash": "d624e535d97c8b39f8b59c0af9192f6a",
+    "semantic_hash": ""
+  },
+  "src/training/multi_kd_trainer.py": {
+    "mtime": 1784791786.887066,
+    "ast_hash": "31df7fd77ee7bce20ce6b8463842ce0e",
+    "semantic_hash": ""
+  },
+  "src/training/train_multi_kd.py": {
+    "mtime": 1784792309.6745458,
+    "ast_hash": "54410eb2073245e588a732f43b443e01",
+    "semantic_hash": ""
+  },
+  "tests/test_multi_teacher_kd.py": {
+    "mtime": 1784792472.4173534,
+    "ast_hash": "e949f1012d109861ae373adf9724ef0d",
+    "semantic_hash": ""
+  },
+  "app/external_run_import.py": {
+    "mtime": 1785843493.575873,
+    "ast_hash": "ef3597683d8e03545aaa433e2252e978",
+    "semantic_hash": ""
+  },
+  "app/pages/9_Vision_Transformer_Teacher_Experiments.py": {
+    "mtime": 1785843591.8286085,
+    "ast_hash": "3d38633899c85dc16a1d8a403e69fb50",
+    "semantic_hash": ""
+  },
+  "app/portable_notebook.py": {
+    "mtime": 1785843309.540759,
+    "ast_hash": "f534336b24f1e20acfb1cc4f6f6ccf6e",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/appleleaf9/dinov2_vitb14.json": {
+    "mtime": 1785842545.8080425,
+    "ast_hash": "418a1bfa6d49e49e474058ebca18226e",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/appleleaf9/maxvit_t.json": {
+    "mtime": 1785842545.8080425,
+    "ast_hash": "5f2f1ea8eaf594daba805c2690fddf14",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/appleleaf9/swin_v2_t.json": {
+    "mtime": 1785842545.8080425,
+    "ast_hash": "96901891dc12bcc9ff0aa183d896829b",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/appleleaf9/vit_b_16.json": {
+    "mtime": 1785842545.8080425,
+    "ast_hash": "6c8311f9f21d0a36fbf008d5033621e4",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/plantpathology2021/dinov2_vitb14.json": {
+    "mtime": 1785842545.818606,
+    "ast_hash": "032fd025575c4898fa2d076e9f09adfe",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/plantpathology2021/maxvit_t.json": {
+    "mtime": 1785842545.8080425,
+    "ast_hash": "22b58e689db89724009cb7421795ebfd",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/plantpathology2021/swin_v2_t.json": {
+    "mtime": 1785842545.8080425,
+    "ast_hash": "3aa9d0f53f43f5156eff01008ef487de",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/plantpathology2021/vit_b_16.json": {
+    "mtime": 1785842545.818606,
+    "ast_hash": "c737ce5e0c3b7f5584f737e870aef2ed",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/plantvillage/dinov2_vitb14.json": {
+    "mtime": 1785842545.8226166,
+    "ast_hash": "06b2bcc86ff48fe7ea83c2a3f09de185",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/plantvillage/maxvit_t.json": {
+    "mtime": 1785842545.820611,
+    "ast_hash": "2b3b06e5bbb6f00b38ff0bc2cfb7962a",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/plantvillage/swin_v2_t.json": {
+    "mtime": 1785842545.820611,
+    "ast_hash": "acd7c4a17528586a27b734d0d58ffd89",
+    "semantic_hash": ""
+  },
+  "configs/teachers/vision_transformers/plantvillage/vit_b_16.json": {
+    "mtime": 1785842545.8226166,
+    "ast_hash": "5bac77c34064df9db7ab09af07e8d17a",
+    "semantic_hash": ""
+  },
+  "scripts/package_external_run.py": {
+    "mtime": 1785843295.0578754,
+    "ast_hash": "bb52f12cda6e9a57958e0153b222ee82",
+    "semantic_hash": ""
+  },
+  "src/tracking/external_bundle.py": {
+    "mtime": 1785843517.7590106,
+    "ast_hash": "807169af7d52e9c1865883ef02991ab9",
+    "semantic_hash": ""
+  },
+  "tests/test_external_run_transfer.py": {
+    "mtime": 1785843512.334679,
+    "ast_hash": "28a83966168828f291dc7bb1eb685b3c",
+    "semantic_hash": ""
+  },
+  "tests/test_portable_notebook.py": {
+    "mtime": 1785842727.282599,
+    "ast_hash": "e14b25c00c0b59c650161ef9ecf259fd",
+    "semantic_hash": ""
+  },
+  "tests/test_streamlit_vit_page.py": {
+    "mtime": 1785843652.0734527,
+    "ast_hash": "0eb7775313eccc51c28ccaab0eed1549",
+    "semantic_hash": ""
+  },
+  "tests/test_vision_transformer_teachers.py": {
+    "mtime": 1785843363.0816882,
+    "ast_hash": "d4d7f96b1591af6cc776269d6ad34536",
+    "semantic_hash": ""
+  },
+  "docs/EXPERIMENT_RESULTS_ANALYSIS.md": {
+    "mtime": 1784893226.9734294,
+    "ast_hash": "dac08598a3f19e1752532c3753772712",
+    "semantic_hash": ""
+  },
+  "docs/KD_RESULTS_ANALYSIS.md": {
+    "mtime": 1784959181.4204445,
+    "ast_hash": "f9104faa07d492394a28bbe2c293c881",
+    "semantic_hash": ""
+  }
+}

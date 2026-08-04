@@ -49,4 +49,4 @@ def show_dataframe_or_warning(df: pd.DataFrame | None, message: str) -> None:
     if df is None or df.empty:
         st.warning(message)
     else:
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width="stretch")

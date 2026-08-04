@@ -33,11 +33,21 @@ def train_one_epoch(
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     max_batches: int | None = None,
+    gradient_accumulation_steps: int = 1,
+    mixed_precision: bool = False,
+    gradient_clip_norm: float | None = None,
+    scaler=None,
 ) -> float:
     """Train for one epoch and return average loss."""
+    if gradient_accumulation_steps <= 0:
+        raise ValueError("gradient_accumulation_steps must be positive.")
     model.train()
     total_loss = 0.0
     total_samples = 0
+    pending_batches = 0
+    amp_enabled = mixed_precision and device.type == "cuda"
+    scaler = scaler or torch.amp.GradScaler(device.type, enabled=amp_enabled)
+    optimizer.zero_grad(set_to_none=True)
 
     progress = tqdm(dataloader, desc="train", leave=False, disable=not _show_progress_bars())
     for batch_index, (inputs, targets) in enumerate(progress):
@@ -47,15 +57,35 @@ def train_one_epoch(
         inputs = inputs.to(device)
         targets = targets.to(device)
 
-        optimizer.zero_grad(set_to_none=True)
-        outputs = model(inputs)
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
+        with torch.amp.autocast(device_type=device.type, enabled=amp_enabled):
+            outputs = model(inputs)
+            loss = criterion(outputs, targets)
+        scaler.scale(loss / gradient_accumulation_steps).backward()
+        pending_batches += 1
+        if pending_batches == gradient_accumulation_steps:
+            if gradient_clip_norm is not None:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clip_norm)
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad(set_to_none=True)
+            pending_batches = 0
 
         batch_size = targets.size(0)
         total_loss += loss.item() * batch_size
         total_samples += batch_size
+
+    if pending_batches:
+        correction = gradient_accumulation_steps / pending_batches
+        for parameter in model.parameters():
+            if parameter.grad is not None:
+                parameter.grad.mul_(correction)
+        if gradient_clip_norm is not None:
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clip_norm)
+        scaler.step(optimizer)
+        scaler.update()
+        optimizer.zero_grad(set_to_none=True)
 
     if total_samples == 0:
         raise ValueError("No training samples were processed. Check dataloader and max_batches.")
@@ -123,30 +153,47 @@ def fit(
     max_val_batches: int | None = None,
     max_test_batches: int | None = None,
     checkpoint_metadata: dict | None = None,
+    early_stopping_patience: int | None = None,
+    monitor_metric: str = "val_macro_f1",
+    train_criterion: nn.Module | None = None,
+    eval_criterion: nn.Module | None = None,
+    gradient_accumulation_steps: int = 1,
+    mixed_precision: bool = False,
+    gradient_clip_norm: float | None = None,
 ) -> dict:
     """Train, select the best validation macro-F1 checkpoint, and test once."""
     if epochs <= 0:
         raise ValueError(f"epochs must be positive, got {epochs}")
 
-    criterion = nn.CrossEntropyLoss()
+    train_criterion = train_criterion or nn.CrossEntropyLoss()
+    eval_criterion = eval_criterion or nn.CrossEntropyLoss()
+    scaler = torch.amp.GradScaler(device.type, enabled=mixed_precision and device.type == "cuda")
     best_val_macro_f1 = -1.0
     best_epoch = -1
     best_val_metrics: dict[str, float] = {}
     history: list[dict[str, float | int]] = []
+    epochs_without_improvement = 0
+
+    if monitor_metric != "val_macro_f1":
+        raise ValueError("Only monitor_metric='val_macro_f1' is supported for now.")
 
     for epoch in range(1, epochs + 1):
         train_loss = train_one_epoch(
             model,
             train_loader,
-            criterion,
+            train_criterion,
             optimizer,
             device,
             max_batches=max_train_batches,
+            gradient_accumulation_steps=gradient_accumulation_steps,
+            mixed_precision=mixed_precision,
+            gradient_clip_norm=gradient_clip_norm,
+            scaler=scaler,
         )
         val_output = evaluate(
             model,
             val_loader,
-            criterion,
+            eval_criterion,
             device,
             class_names,
             max_batches=max_val_batches,
@@ -186,6 +233,7 @@ def fit(
             best_val_macro_f1 = val_metrics["macro_f1"]
             best_epoch = epoch
             best_val_metrics = val_metrics
+            epochs_without_improvement = 0
             if checkpoint_path is not None:
                 save_checkpoint(
                     model=model,
@@ -195,6 +243,22 @@ def fit(
                     metrics=val_metrics,
                     metadata=checkpoint_metadata,
                 )
+        else:
+            epochs_without_improvement += 1
+
+        if (
+            early_stopping_patience is not None
+            and early_stopping_patience > 0
+            and epochs_without_improvement >= early_stopping_patience
+        ):
+            print(
+                "EARLY_STOPPING "
+                f"epoch={epoch}/{epochs} "
+                f"best_epoch={best_epoch} "
+                f"best_val_macro_f1={best_val_macro_f1:.6f}",
+                flush=True,
+            )
+            break
 
     if checkpoint_path is not None and Path(checkpoint_path).exists():
         checkpoint = torch.load(checkpoint_path, map_location=device)
@@ -203,7 +267,7 @@ def fit(
     test_output = evaluate(
         model,
         test_loader,
-        criterion,
+        eval_criterion,
         device,
         class_names,
         max_batches=max_test_batches,

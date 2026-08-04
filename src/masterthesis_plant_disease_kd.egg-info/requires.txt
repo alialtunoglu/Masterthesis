@@ -7,6 +7,8 @@ tqdm
 matplotlib
 mlflow
 torchinfo
+streamlit
+psutil
 
 [dev]
 ruff

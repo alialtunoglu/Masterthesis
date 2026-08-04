@@ -18,7 +18,10 @@ def load_csv_if_exists(path: str | Path) -> pd.DataFrame | None:
         candidate = get_project_root() / candidate
     if not candidate.exists():
         return None
-    return pd.read_csv(candidate)
+    try:
+        return pd.read_csv(candidate)
+    except pd.errors.EmptyDataError:
+        return None
 
 
 def safe_read_json(path: str | Path) -> dict[str, Any] | None:

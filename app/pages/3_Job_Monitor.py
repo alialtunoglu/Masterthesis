@@ -44,6 +44,49 @@ def unique_values(jobs: list[dict], key: str) -> list[str]:
     return sorted({str(job.get(key)) for job in jobs if job.get(key) not in (None, "")})
 
 
+def is_kd_job(job: dict) -> bool:
+    return str(job.get("stage", "")).lower() == "knowledge_distillation" or bool(
+        job.get("kd_type")
+    )
+
+
+def is_multi_kd_job(job: dict) -> bool:
+    return str(job.get("stage", "")).lower() == "multi_teacher_knowledge_distillation"
+
+
+def job_type_label(job: dict) -> str:
+    if is_multi_kd_job(job):
+        return "Multi-Teacher KD"
+    if is_kd_job(job):
+        return "Knowledge Distillation"
+    if str(job.get("stage", "")).lower() == "teacher_cnn":
+        return "CNN Teacher"
+    if str(job.get("stage", "")).lower() == "teacher_vision_transformer":
+        return "Vision Transformer Teacher"
+    return "Student Baseline"
+
+
+def job_option_label(job: dict) -> str:
+    prefix = f"{job.get('job_id')} | {job_type_label(job)}"
+    if is_multi_kd_job(job):
+        teachers = " + ".join(job.get("teacher_models") or [])
+        student = job.get("student_model") or job.get("model") or "unknown student"
+        kd_type = str(job.get("kd_type") or "unknown").replace("_", " ")
+        return (
+            f"{prefix} ({kd_type}) | {teachers} → {student} | "
+            f"{job.get('dataset')} | {job.get('status')}"
+        )
+    if is_kd_job(job):
+        kd_type = str(job.get("kd_type") or "unknown").replace("_", " ")
+        teacher = job.get("teacher_model") or "unknown teacher"
+        student = job.get("student_model") or job.get("model") or "unknown student"
+        return (
+            f"{prefix} ({kd_type}) | Teacher: {teacher} → Student: {student} | "
+            f"{job.get('dataset')} | {job.get('status')}"
+        )
+    return f"{prefix} | {job.get('dataset')} | {job.get('model')} | {job.get('status')}"
+
+
 def filter_jobs(
     jobs: list[dict],
     status_filter: str,
@@ -62,12 +105,65 @@ def filter_jobs(
             continue
         haystack = " ".join(
             str(job.get(key, ""))
-            for key in ["job_id", "dataset", "model", "status", "config", "log_path"]
+            for key in [
+                "job_id",
+                "dataset",
+                "model",
+                "student_model",
+                "teacher_model",
+                "teacher_models",
+                "teacher_run_ids",
+                "aggregation",
+                "kd_type",
+                "status",
+                "config",
+                "log_path",
+            ]
         ).lower()
         if search and search not in haystack:
             continue
         filtered.append(job)
     return filtered
+
+
+def find_job_by_id(jobs: list[dict], job_id: str | None) -> dict | None:
+    if not job_id:
+        return None
+    return next((job for job in jobs if str(job.get("job_id")) == str(job_id)), None)
+
+
+def latest_running_job(jobs: list[dict]) -> dict | None:
+    running_jobs = [job for job in jobs if job.get("status") == "running"]
+    if not running_jobs:
+        return None
+    return max(
+        running_jobs,
+        key=lambda job: str(job.get("start_time") or job.get("queued_time") or ""),
+    )
+
+
+def choose_monitor_job_id(jobs: list[dict], follow_running: bool) -> str:
+    current_id = st.session_state.get("job_monitor_selected_job_id")
+    current_job = find_job_by_id(jobs, current_id)
+    running_job = latest_running_job(jobs)
+
+    if follow_running and running_job:
+        selected_id = str(running_job.get("job_id"))
+        st.session_state["job_monitor_selected_job_id"] = selected_id
+        st.session_state["job_monitor_last_running_job_id"] = selected_id
+        return selected_id
+
+    if current_job:
+        return str(current_job.get("job_id"))
+
+    last_running_id = st.session_state.get("job_monitor_last_running_job_id")
+    if find_job_by_id(jobs, last_running_id):
+        st.session_state["job_monitor_selected_job_id"] = last_running_id
+        return str(last_running_id)
+
+    selected_id = str(jobs[0].get("job_id"))
+    st.session_state["job_monitor_selected_job_id"] = selected_id
+    return selected_id
 
 
 st.set_page_config(page_title="Job Monitor", layout="wide")
@@ -106,12 +202,14 @@ if not jobs:
     st.info("Henüz izlenecek job yok. Baseline Experiments sayfasından bir iş başlatabilirsin.")
     st.stop()
 
-top_cols = st.columns([1, 1, 2])
+top_cols = st.columns([1, 1, 1, 2])
 with top_cols[0]:
     auto_refresh = st.checkbox("Auto-refresh", value=True)
 with top_cols[1]:
     refresh_seconds = st.number_input("Yenileme saniyesi", min_value=2, max_value=60, value=5)
 with top_cols[2]:
+    follow_running = st.checkbox("Running job'ı otomatik takip et", value=True)
+with top_cols[3]:
     st.caption("Auto-refresh açıkken sayfa seçilen aralıkta kendini yeniler.")
 
 st.subheader("Job Filtresi")
@@ -131,13 +229,52 @@ if not filtered_jobs:
     st.warning("Seçilen filtrelerle job bulunamadı.")
     st.stop()
 
-job_options = [
-    f"{job.get('job_id')} | {job.get('dataset')} | {job.get('model')} | {job.get('status')}"
-    for job in filtered_jobs
-]
-selected_label = st.selectbox("Job seç", job_options)
+job_options = [job_option_label(job) for job in filtered_jobs]
+selected_job_id = choose_monitor_job_id(filtered_jobs, follow_running=follow_running)
+job_ids = [str(job.get("job_id")) for job in filtered_jobs]
+selected_index = job_ids.index(selected_job_id) if selected_job_id in job_ids else 0
+selected_label = st.selectbox("Job seç", job_options, index=selected_index)
 selected_index = job_options.index(selected_label)
 job = filtered_jobs[selected_index]
+st.session_state["job_monitor_selected_job_id"] = str(job.get("job_id"))
+if job.get("status") == "running":
+    st.session_state["job_monitor_last_running_job_id"] = str(job.get("job_id"))
+
+st.subheader("Seçili İş")
+if is_multi_kd_job(job):
+    identity_cols = st.columns(5)
+    identity_cols[0].metric("İş Türü", "Multi-Teacher KD")
+    identity_cols[1].metric(
+        "KD Türü", str(job.get("kd_type") or "N/A").replace("_", " ")
+    )
+    identity_cols[2].metric(
+        "Teacher'lar", " + ".join(job.get("teacher_models") or [])
+    )
+    identity_cols[3].metric(
+        "Student", str(job.get("student_model") or job.get("model") or "N/A")
+    )
+    identity_cols[4].metric("Aggregation", str(job.get("aggregation") or "N/A"))
+    st.caption(
+        "Teacher run ID'leri: " + ", ".join(job.get("teacher_run_ids") or [])
+    )
+elif is_kd_job(job):
+    identity_cols = st.columns(5)
+    identity_cols[0].metric("İş Türü", "Knowledge Distillation")
+    identity_cols[1].metric(
+        "KD Türü", str(job.get("kd_type") or "N/A").replace("_", " ")
+    )
+    identity_cols[2].metric("Teacher", str(job.get("teacher_model") or "N/A"))
+    identity_cols[3].metric(
+        "Student", str(job.get("student_model") or job.get("model") or "N/A")
+    )
+    identity_cols[4].metric("Dataset", str(job.get("dataset") or "N/A"))
+    teacher_run_id = str(job.get("teacher_run_id") or "N/A")
+    st.caption(f"Teacher run ID: {teacher_run_id}")
+else:
+    st.info(
+        f"{job_type_label(job)} · Model: {job.get('model', 'N/A')} · "
+        f"Dataset: {job.get('dataset', 'N/A')}"
+    )
 
 log_path = job.get("log_path", "")
 log_info = get_log_file_info(log_path)
@@ -187,6 +324,15 @@ metadata_cols = [
     "job_id",
     "dataset",
     "model",
+    "student_model",
+    "teacher_model",
+    "teacher_run_id",
+    "teacher_models",
+    "teacher_run_ids",
+    "teacher_count",
+    "aggregation",
+    "resolved_teacher_weights",
+    "kd_type",
     "status",
     "queued_time",
     "start_time",
@@ -198,23 +344,39 @@ metadata_cols = [
     "log_path",
 ]
 metadata_row = {column: job.get(column) for column in metadata_cols if column in job}
-st.dataframe(pd.DataFrame([metadata_row]), use_container_width=True)
+st.dataframe(pd.DataFrame([metadata_row]), width="stretch")
 
 if progress["metrics"]:
     st.subheader("Son Görülen Metrikler")
     metrics = progress["metrics"]
     visible_metrics = [
         "train_loss",
+        "total_loss",
+        "ce_loss",
+        "kd_loss",
+        "feature_loss",
+        "relation_loss",
+        "teacher_student_agreement",
+        "ensemble_student_agreement",
         "val_loss",
         "val_accuracy",
         "val_macro_f1",
         "learning_rate",
     ]
-    metric_cards = st.columns(len(visible_metrics))
+    visible_metrics.extend(
+        sorted(
+            name
+            for name in metrics
+            if name.startswith("teacher_") or name.startswith("agreement_")
+        )
+    )
+    metric_cards = st.columns(min(len(visible_metrics), 6))
     for index, name in enumerate(visible_metrics):
         value = metrics.get(name)
-        metric_cards[index].metric(name, "N/A" if value is None else f"{value:.6f}")
-    st.dataframe(pd.DataFrame([metrics]), use_container_width=True)
+        metric_cards[index % len(metric_cards)].metric(
+            name, "N/A" if value is None else f"{value:.6f}"
+        )
+    st.dataframe(pd.DataFrame([metrics]), width="stretch")
 
 st.subheader("Log")
 if not log_info.get("exists"):
@@ -226,8 +388,26 @@ else:
 
 st.subheader("Tüm İşler")
 jobs_df = pd.DataFrame(filtered_jobs)
-display_cols = ["job_id", "dataset", "model", "status", "queued_time", "start_time", "end_time", "process_id", "log_path"]
-st.dataframe(jobs_df[[col for col in display_cols if col in jobs_df.columns]], use_container_width=True)
+display_cols = [
+    "job_id",
+    "stage",
+    "dataset",
+    "kd_type",
+    "teacher_model",
+    "teacher_models",
+    "aggregation",
+    "student_model",
+    "model",
+    "status",
+    "queued_time",
+    "start_time",
+    "end_time",
+    "process_id",
+    "log_path",
+]
+st.dataframe(
+    jobs_df[[col for col in display_cols if col in jobs_df.columns]], width="stretch"
+)
 
 if auto_refresh:
     time.sleep(int(refresh_seconds))

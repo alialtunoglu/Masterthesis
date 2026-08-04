@@ -1,0 +1,15 @@
+/datasets/
+/results/
+/runs/
+/checkpoints/
+/mlruns/
+/graphify-out/
+/.git/
+/.codebase-memory/
+/__pycache__/
+/.pytest_cache/
+/.ruff_cache/
+*.pt
+*.pth
+*.ckpt
+*.pyc

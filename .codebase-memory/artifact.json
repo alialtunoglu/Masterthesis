@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "5199f19980a3e15f456f80757f539e89d7b87c88",
+    "indexed_at": "2026-08-04T11:42:06Z",
+    "project": "MasterThesis",
+    "nodes": 12261,
+    "edges": 17725,
+    "original_size": 11993088,
+    "compressed_size": 1544405,
+    "compression_level": 9
+}

@@ -1,4 +1,6 @@
-datasets/
+/datasets/
+/results/
+/runs/
 mlruns/
 checkpoints/
 logs/
@@ -23,4 +25,6 @@ env/
 .ruff_cache/
 runs/logs/
 runs/jobs/
+/graphify-out/cache/
+/graphify-out/20*/
 .streamlit/secrets.toml

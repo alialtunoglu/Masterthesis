@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -402,6 +403,23 @@ def main() -> None:
     experiment_name = final_config["experiment_name"] or build_experiment_name("baseline")
     setup_mlflow(experiment_name=experiment_name, tracking_uri=final_config["tracking_uri"])
     run = start_run(run_name=run_name)
+    print(
+        "JOB_RUN_CONTEXT "
+        + json.dumps(
+            {
+                "run_name": run_name,
+                "mlflow_run_id": run.info.run_id,
+                "tracking_uri": final_config["tracking_uri"],
+                "artifact_paths": {
+                    name: relative(path)
+                    for name, path in paths.items()
+                    if name != "summary"
+                },
+            },
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
 
     try:
         log_params(final_config)

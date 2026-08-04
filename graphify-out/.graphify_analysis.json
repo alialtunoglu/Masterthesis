@@ -1,0 +1,801 @@
+{
+  "communities": {
+    "0": [
+      "app_experiment_runner",
+      "app_experiment_runner_build_baseline_command",
+      "app_experiment_runner_build_teacher_command",
+      "app_experiment_runner_cancel_queued_job",
+      "app_experiment_runner_enqueue_job",
+      "app_experiment_runner_ensure_run_dirs",
+      "app_experiment_runner_get_job_runtime_seconds",
+      "app_experiment_runner_get_log_file_info",
+      "app_experiment_runner_get_queue_worker_status",
+      "app_experiment_runner_is_process_running",
+      "app_experiment_runner_job_path",
+      "app_experiment_runner_list_jobs",
+      "app_experiment_runner_load_dashboard_settings",
+      "app_experiment_runner_log_has_error",
+      "app_experiment_runner_parse_log_progress",
+      "app_experiment_runner_promote_queued_jobs",
+      "app_experiment_runner_py_any",
+      "app_experiment_runner_py_path",
+      "app_experiment_runner_rationale_1",
+      "app_experiment_runner_rationale_139",
+      "app_experiment_runner_rationale_189",
+      "app_experiment_runner_rationale_216",
+      "app_experiment_runner_rationale_233",
+      "app_experiment_runner_rationale_238",
+      "app_experiment_runner_rationale_259",
+      "app_experiment_runner_rationale_272",
+      "app_experiment_runner_rationale_299",
+      "app_experiment_runner_rationale_310",
+      "app_experiment_runner_rationale_318",
+      "app_experiment_runner_rationale_332",
+      "app_experiment_runner_rationale_355",
+      "app_experiment_runner_rationale_368",
+      "app_experiment_runner_rationale_383",
+      "app_experiment_runner_rationale_417",
+      "app_experiment_runner_rationale_431",
+      "app_experiment_runner_rationale_442",
+      "app_experiment_runner_rationale_458",
+      "app_experiment_runner_rationale_491",
+      "app_experiment_runner_rationale_52",
+      "app_experiment_runner_rationale_81",
+      "app_experiment_runner_read_json_file",
+      "app_experiment_runner_read_log_tail",
+      "app_experiment_runner_resolve_log_path",
+      "app_experiment_runner_start_job",
+      "app_experiment_runner_start_queue_worker",
+      "app_experiment_runner_start_queued_job",
+      "app_experiment_runner_stop_job",
+      "app_experiment_runner_stop_queue_worker",
+      "app_experiment_runner_update_job_status_if_finished",
+      "app_experiment_runner_write_job",
+      "app_queue_worker",
+      "app_queue_worker_claim_worker_slot",
+      "app_queue_worker_main",
+      "app_queue_worker_mark_state",
+      "app_queue_worker_parse_args",
+      "app_queue_worker_py_namespace",
+      "app_queue_worker_rationale_1",
+      "app_queue_worker_rationale_65",
+      "app_queue_worker_write_heartbeat"
+    ],
+    "1": [
+      "app_pages_1_dashboard",
+      "app_pages_1_dashboard_rationale_1",
+      "app_pages_2_baseline_experiments",
+      "app_pages_2_baseline_experiments_config_label",
+      "app_pages_2_baseline_experiments_filter_configs",
+      "app_pages_2_baseline_experiments_load_config_defaults",
+      "app_pages_2_baseline_experiments_load_config_index",
+      "app_pages_2_baseline_experiments_py_any",
+      "app_pages_2_baseline_experiments_quote_command",
+      "app_pages_2_baseline_experiments_rationale_1",
+      "app_pages_4_results_explorer",
+      "app_pages_4_results_explorer_filter_multiselect",
+      "app_pages_4_results_explorer_py_dataframe",
+      "app_pages_4_results_explorer_py_path",
+      "app_pages_4_results_explorer_rationale_1",
+      "app_pages_4_results_explorer_resolve_path",
+      "app_pages_4_results_explorer_show_run_artifacts",
+      "app_pages_5_cnn_teacher_experiments",
+      "app_pages_5_cnn_teacher_experiments_config_label",
+      "app_pages_5_cnn_teacher_experiments_load_config_index",
+      "app_pages_5_cnn_teacher_experiments_py_any",
+      "app_pages_5_cnn_teacher_experiments_quote_command",
+      "app_pages_5_cnn_teacher_experiments_rationale_1",
+      "app_result_loader",
+      "app_result_loader_load_baseline_results",
+      "app_result_loader_load_csv_if_exists",
+      "app_result_loader_load_dataset_summary",
+      "app_result_loader_load_split_summaries",
+      "app_result_loader_py_any",
+      "app_result_loader_py_dataframe",
+      "app_result_loader_py_path",
+      "app_result_loader_rationale_1",
+      "app_result_loader_rationale_15",
+      "app_result_loader_rationale_28",
+      "app_result_loader_rationale_43",
+      "app_result_loader_rationale_48",
+      "app_result_loader_rationale_53",
+      "app_result_loader_safe_read_json",
+      "app_ui_utils",
+      "app_ui_utils_display_path_status",
+      "app_ui_utils_file_exists",
+      "app_ui_utils_format_metric",
+      "app_ui_utils_get_project_root",
+      "app_ui_utils_py_any",
+      "app_ui_utils_py_dataframe",
+      "app_ui_utils_py_path",
+      "app_ui_utils_rationale_1",
+      "app_ui_utils_rationale_12",
+      "app_ui_utils_rationale_17",
+      "app_ui_utils_rationale_26",
+      "app_ui_utils_rationale_34",
+      "app_ui_utils_rationale_46",
+      "app_ui_utils_show_dataframe_or_warning"
+    ],
+    "2": [
+      "src_tracking_mlflow_tracker",
+      "src_tracking_mlflow_tracker_end_run",
+      "src_tracking_mlflow_tracker_import_mlflow",
+      "src_tracking_mlflow_tracker_log_artifact",
+      "src_tracking_mlflow_tracker_log_artifacts",
+      "src_tracking_mlflow_tracker_log_metrics",
+      "src_tracking_mlflow_tracker_log_params",
+      "src_tracking_mlflow_tracker_log_text",
+      "src_tracking_mlflow_tracker_py_any",
+      "src_tracking_mlflow_tracker_py_path",
+      "src_tracking_mlflow_tracker_rationale_1",
+      "src_tracking_mlflow_tracker_rationale_25",
+      "src_tracking_mlflow_tracker_rationale_35",
+      "src_tracking_mlflow_tracker_rationale_41",
+      "src_tracking_mlflow_tracker_rationale_49",
+      "src_tracking_mlflow_tracker_rationale_64",
+      "src_tracking_mlflow_tracker_rationale_70",
+      "src_tracking_mlflow_tracker_rationale_76",
+      "src_tracking_mlflow_tracker_rationale_82",
+      "src_tracking_mlflow_tracker_setup_mlflow",
+      "src_tracking_mlflow_tracker_start_run",
+      "src_training_train_teacher",
+      "src_training_train_teacher_add_runtime_fields",
+      "src_training_train_teacher_append_summary_row",
+      "src_training_train_teacher_build_artifact_paths",
+      "src_training_train_teacher_build_final_config",
+      "src_training_train_teacher_build_run_name",
+      "src_training_train_teacher_build_summary_row",
+      "src_training_train_teacher_cli_overrides",
+      "src_training_train_teacher_load_config_file",
+      "src_training_train_teacher_main",
+      "src_training_train_teacher_normalize_config_keys",
+      "src_training_train_teacher_parse_args",
+      "src_training_train_teacher_prefixed",
+      "src_training_train_teacher_py_any",
+      "src_training_train_teacher_py_device",
+      "src_training_train_teacher_py_namespace",
+      "src_training_train_teacher_py_path",
+      "src_training_train_teacher_rationale_1",
+      "src_training_train_teacher_relative",
+      "src_training_train_teacher_resolve_split_file",
+      "src_training_train_teacher_run_dry_check",
+      "src_training_train_teacher_select_device",
+      "src_training_train_teacher_write_training_artifacts"
+    ],
+    "3": [
+      "src_evaluation_reports",
+      "src_evaluation_reports_py_path",
+      "src_evaluation_reports_rationale_1",
+      "src_evaluation_reports_rationale_29",
+      "src_evaluation_reports_rationale_69",
+      "src_evaluation_reports_save_confusion_matrix_artifacts",
+      "src_evaluation_reports_save_learning_curves",
+      "src_training_train_baseline",
+      "src_training_train_baseline_add_runtime_fields",
+      "src_training_train_baseline_append_summary_row",
+      "src_training_train_baseline_build_artifact_paths",
+      "src_training_train_baseline_build_final_config",
+      "src_training_train_baseline_build_run_name_extra",
+      "src_training_train_baseline_build_summary_row",
+      "src_training_train_baseline_cli_overrides",
+      "src_training_train_baseline_load_config_file",
+      "src_training_train_baseline_main",
+      "src_training_train_baseline_normalize_config_keys",
+      "src_training_train_baseline_parse_args",
+      "src_training_train_baseline_prefixed",
+      "src_training_train_baseline_py_any",
+      "src_training_train_baseline_py_device",
+      "src_training_train_baseline_py_namespace",
+      "src_training_train_baseline_py_path",
+      "src_training_train_baseline_rationale_1",
+      "src_training_train_baseline_relative",
+      "src_training_train_baseline_resolve_split_file",
+      "src_training_train_baseline_run_dry_check",
+      "src_training_train_baseline_select_device",
+      "src_training_train_baseline_write_training_artifacts",
+      "src_utils_io",
+      "src_utils_io_ensure_dir",
+      "src_utils_io_load_json",
+      "src_utils_io_py_any",
+      "src_utils_io_py_path",
+      "src_utils_io_rationale_1",
+      "src_utils_io_save_csv",
+      "src_utils_io_save_json"
+    ],
+    "4": [
+      "metriclogger",
+      "optimizer",
+      "src_evaluation_metrics",
+      "src_evaluation_metrics_compute_classification_metrics",
+      "src_evaluation_metrics_compute_per_class_metrics",
+      "src_evaluation_metrics_py_dataframe",
+      "src_evaluation_metrics_rationale_1",
+      "src_evaluation_metrics_rationale_16",
+      "src_evaluation_metrics_rationale_49",
+      "src_training_trainer",
+      "src_training_trainer_batch_limit_reached",
+      "src_training_trainer_evaluate",
+      "src_training_trainer_fit",
+      "src_training_trainer_py_device",
+      "src_training_trainer_py_module",
+      "src_training_trainer_py_path",
+      "src_training_trainer_rationale_1",
+      "src_training_trainer_rationale_129",
+      "src_training_trainer_rationale_21",
+      "src_training_trainer_rationale_255",
+      "src_training_trainer_rationale_37",
+      "src_training_trainer_rationale_73",
+      "src_training_trainer_save_checkpoint",
+      "src_training_trainer_show_progress_bars",
+      "src_training_trainer_train_one_epoch"
+    ],
+    "5": [
+      "scripts_analyze_student_baselines",
+      "scripts_analyze_student_baselines_add_artifact_paths",
+      "scripts_analyze_student_baselines_artifact_check",
+      "scripts_analyze_student_baselines_build_overall",
+      "scripts_analyze_student_baselines_build_recommendations",
+      "scripts_analyze_student_baselines_format_markdown_value",
+      "scripts_analyze_student_baselines_load_results",
+      "scripts_analyze_student_baselines_main",
+      "scripts_analyze_student_baselines_parse_args",
+      "scripts_analyze_student_baselines_py_any",
+      "scripts_analyze_student_baselines_py_dataframe",
+      "scripts_analyze_student_baselines_py_namespace",
+      "scripts_analyze_student_baselines_py_path",
+      "scripts_analyze_student_baselines_rationale_1",
+      "scripts_analyze_student_baselines_rel",
+      "scripts_analyze_student_baselines_save_bar_by_dataset",
+      "scripts_analyze_student_baselines_save_overall_bars",
+      "scripts_analyze_student_baselines_save_scatter",
+      "scripts_analyze_student_baselines_select_best_runs",
+      "scripts_analyze_student_baselines_to_markdown",
+      "scripts_analyze_student_baselines_write_dataset_comparisons",
+      "scripts_analyze_student_baselines_write_graphs",
+      "scripts_analyze_student_baselines_write_report"
+    ],
+    "6": [
+      "counter",
+      "src_datasets_analyze_datasets",
+      "src_datasets_analyze_datasets_analyze_imagefolder",
+      "src_datasets_analyze_datasets_analyze_plantpathology2021",
+      "src_datasets_analyze_datasets_main",
+      "src_datasets_analyze_datasets_print_summary",
+      "src_datasets_analyze_datasets_rationale_1",
+      "src_datasets_create_splits",
+      "src_datasets_create_splits_build_split_payload",
+      "src_datasets_create_splits_create_split",
+      "src_datasets_create_splits_largest_remainder_counts",
+      "src_datasets_create_splits_load_samples",
+      "src_datasets_create_splits_main",
+      "src_datasets_create_splits_parse_args",
+      "src_datasets_create_splits_print_split_summary",
+      "src_datasets_create_splits_py_namespace",
+      "src_datasets_create_splits_py_path",
+      "src_datasets_create_splits_rationale_1",
+      "src_datasets_create_splits_stratified_split",
+      "src_datasets_imagefolder_utils",
+      "src_datasets_imagefolder_utils_collect_imagefolder_samples",
+      "src_datasets_imagefolder_utils_count_by_class",
+      "src_datasets_imagefolder_utils_get_class_dirs",
+      "src_datasets_imagefolder_utils_is_image_file",
+      "src_datasets_imagefolder_utils_py_path",
+      "src_datasets_imagefolder_utils_rationale_1",
+      "src_datasets_plantpathology_utils",
+      "src_datasets_plantpathology_utils_add_label_flags",
+      "src_datasets_plantpathology_utils_collect_plantpathology_samples",
+      "src_datasets_plantpathology_utils_get_single_label_dataframe",
+      "src_datasets_plantpathology_utils_list_image_files",
+      "src_datasets_plantpathology_utils_load_train_csv",
+      "src_datasets_plantpathology_utils_py_dataframe",
+      "src_datasets_plantpathology_utils_py_path",
+      "src_datasets_plantpathology_utils_rationale_1",
+      "src_datasets_plantpathology_utils_split_label_tokens",
+      "src_datasets_plantpathology_utils_summarize_labels",
+      "src_utils_seed",
+      "src_utils_seed_rationale_1",
+      "src_utils_seed_rationale_10",
+      "src_utils_seed_set_seed"
+    ],
+    "7": [
+      "namedtuple",
+      "scripts_reset_experiments",
+      "scripts_reset_experiments_archive_path",
+      "scripts_reset_experiments_confirm_or_exit",
+      "scripts_reset_experiments_delete_paths",
+      "scripts_reset_experiments_find_project_root",
+      "scripts_reset_experiments_main",
+      "scripts_reset_experiments_move_to_archive",
+      "scripts_reset_experiments_parse_args",
+      "scripts_reset_experiments_py_namespace",
+      "scripts_reset_experiments_py_path",
+      "scripts_reset_experiments_rationale_1",
+      "scripts_reset_experiments_rationale_115",
+      "scripts_reset_experiments_rationale_153",
+      "scripts_reset_experiments_rationale_49",
+      "scripts_reset_experiments_rationale_54",
+      "scripts_reset_experiments_rationale_91",
+      "scripts_reset_experiments_recreate_empty_dirs",
+      "scripts_reset_experiments_resetresult",
+      "scripts_reset_experiments_validate_project_root"
+    ],
+    "8": [
+      "src_models_model_info",
+      "src_models_model_info_count_parameters",
+      "src_models_model_info_count_trainable_parameters",
+      "src_models_model_info_estimate_model_size_mb",
+      "src_models_model_info_get_model_summary_dict",
+      "src_models_model_info_py_module",
+      "src_models_model_info_rationale_1",
+      "src_models_model_info_rationale_14",
+      "src_models_model_info_rationale_19",
+      "src_models_model_info_rationale_27",
+      "src_models_model_info_rationale_9"
+    ],
+    "9": [
+      "dataset",
+      "src_datasets_dataloaders",
+      "src_datasets_dataloaders_build_eval_transform",
+      "src_datasets_dataloaders_build_train_transform",
+      "src_datasets_dataloaders_create_dataloaders",
+      "src_datasets_dataloaders_py_path",
+      "src_datasets_dataloaders_rationale_1",
+      "src_datasets_dataloaders_rationale_62",
+      "src_datasets_dataset_registry",
+      "src_datasets_dataset_registry_datasetconfig",
+      "src_datasets_dataset_registry_datasetconfig_absolute_csv_path",
+      "src_datasets_dataset_registry_datasetconfig_absolute_image_dir",
+      "src_datasets_dataset_registry_datasetconfig_absolute_path",
+      "src_datasets_dataset_registry_py_path",
+      "src_datasets_dataset_registry_rationale_1",
+      "src_datasets_torch_datasets",
+      "src_datasets_torch_datasets_py_any",
+      "src_datasets_torch_datasets_py_path",
+      "src_datasets_torch_datasets_rationale_1",
+      "src_datasets_torch_datasets_rationale_23",
+      "src_datasets_torch_datasets_splitjsonimagedataset",
+      "src_datasets_torch_datasets_splitjsonimagedataset_getitem",
+      "src_datasets_torch_datasets_splitjsonimagedataset_init",
+      "src_datasets_torch_datasets_splitjsonimagedataset_len"
+    ],
+    "10": [
+      "app_pages_3_job_monitor",
+      "app_pages_3_job_monitor_choose_monitor_job_id",
+      "app_pages_3_job_monitor_filter_jobs",
+      "app_pages_3_job_monitor_find_job_by_id",
+      "app_pages_3_job_monitor_format_duration",
+      "app_pages_3_job_monitor_latest_running_job",
+      "app_pages_3_job_monitor_rationale_1",
+      "app_pages_3_job_monitor_unique_values"
+    ],
+    "11": [
+      "src_models_model_factory",
+      "src_models_model_factory_create_model",
+      "src_models_model_factory_get_model_type",
+      "src_models_model_factory_py_module",
+      "src_models_model_factory_rationale_1",
+      "src_models_model_factory_rationale_75",
+      "src_models_model_factory_rationale_86",
+      "src_models_model_factory_replace_classifier",
+      "src_models_model_factory_weights_or_none"
+    ],
+    "26": [
+      "app_pages_6_mlflow_helper",
+      "app_pages_6_mlflow_helper_rationale_1"
+    ],
+    "27": [
+      "app_streamlit_app",
+      "app_streamlit_app_rationale_1"
+    ],
+    "41": [
+      "src_evaluation_init",
+      "src_evaluation_init_rationale_1"
+    ],
+    "42": [
+      "src_init",
+      "src_init_rationale_1"
+    ],
+    "43": [
+      "src_models_init",
+      "src_models_init_rationale_1"
+    ],
+    "44": [
+      "src_tracking_init",
+      "src_tracking_init_rationale_1"
+    ],
+    "45": [
+      "src_training_init",
+      "src_training_init_rationale_1"
+    ],
+    "46": [
+      "src_utils_init",
+      "src_utils_init_rationale_1"
+    ],
+    "47": [
+      "pkg_masterthesis_plant_disease_kd"
+    ],
+    "76": [
+      "docs_student_baseline_report",
+      "docs_student_baseline_report_amaç",
+      "docs_student_baseline_report_appleleaf9",
+      "docs_student_baseline_report_artifact_kontrolü",
+      "docs_student_baseline_report_eğitim_ayarları",
+      "docs_student_baseline_report_genel_ortalama_performans",
+      "docs_student_baseline_report_kd_seçim_kriterleri",
+      "docs_student_baseline_report_model_boyutu_ve_parametre_karşılaştırması",
+      "docs_student_baseline_report_okunan_dosyalar",
+      "docs_student_baseline_report_plantpathology2021",
+      "docs_student_baseline_report_plantvillage",
+      "docs_student_baseline_report_plantvillage_ceiling_effect_yorumu",
+      "docs_student_baseline_report_sonraki_aşama",
+      "docs_student_baseline_report_student_baseline_report",
+      "docs_student_baseline_report_student_modeller",
+      "docs_student_baseline_report_student_seçim_önerileri",
+      "docs_student_baseline_report_veri_seti_bazlı_sonuçlar",
+      "docs_student_baseline_report_veri_seti_bazında_en_i̇yi_student",
+      "docs_student_baseline_report_veri_setleri"
+    ],
+    "77": [
+      "readme",
+      "readme_bağımlılıklar",
+      "readme_cnn_teacher_eğitimi",
+      "readme_daha_fazla_dokümantasyon",
+      "readme_deney_çıktılarını_temizleme",
+      "readme_masterthesis_plant_disease_kd",
+      "readme_mevcut_aşamalar",
+      "readme_mlflow_ui",
+      "readme_ortam",
+      "readme_pretrained_ağırlık_notu",
+      "readme_queue_worker",
+      "readme_sonuç_analizi",
+      "readme_split_oluşturma",
+      "readme_streamlit_dashboard",
+      "readme_student_baseline_eğitimi",
+      "readme_veri_seti_analizi",
+      "readme_veri_setleri",
+      "readme_önerilen_çalıştırma_sırası"
+    ],
+    "78": [
+      "docs_experiment_plan",
+      "docs_experiment_plan_aşama_1_altyapı_doğrulama",
+      "docs_experiment_plan_aşama_2_appleleaf9_student_baseline",
+      "docs_experiment_plan_aşama_3_plantvillage_student_baseline",
+      "docs_experiment_plan_aşama_4_cnn_teacher_deneyleri",
+      "docs_experiment_plan_aşama_5_vit_teacher_deneyleri",
+      "docs_experiment_plan_aşama_6_teacher_student_seçimi",
+      "docs_experiment_plan_aşama_7_single_teacher_kd",
+      "docs_experiment_plan_aşama_8_multi_teacher_kd",
+      "docs_experiment_plan_aşama_9_adaptive_temperature_self_distillation_quantization",
+      "docs_experiment_plan_experiment_plan",
+      "docs_experiment_plan_takip_edilecek_çıktılar"
+    ],
+    "79": [
+      "docs_cnn_teachers",
+      "docs_cnn_teachers_cnn_teacher_modelleri",
+      "docs_cnn_teachers_cnn_teacher_training",
+      "docs_cnn_teachers_config_konumu",
+      "docs_cnn_teachers_mlflow",
+      "docs_cnn_teachers_sonraki_aşama",
+      "docs_cnn_teachers_sonuç_dosyaları",
+      "docs_cnn_teachers_sonuçların_yorumlanması",
+      "docs_cnn_teachers_streamlit_dashboard",
+      "docs_cnn_teachers_training_script"
+    ],
+    "80": [
+      "docs_web_ui",
+      "docs_web_ui_baseline_deney_başlatma",
+      "docs_web_ui_cpu_mini_deney_ve_cuda_full_deney",
+      "docs_web_ui_dosya_konumları",
+      "docs_web_ui_job_monitor",
+      "docs_web_ui_job_queue",
+      "docs_web_ui_mlflow_ui",
+      "docs_web_ui_sayfalar",
+      "docs_web_ui_streamlit_dashboard",
+      "docs_web_ui_streamlit_web_ui"
+    ],
+    "81": [
+      "docs_datasets",
+      "docs_datasets_analyze_datasets",
+      "docs_datasets_create_splits",
+      "docs_datasets_dataset_preparation_notes",
+      "docs_datasets_existing_dataset_structure",
+      "docs_datasets_plantpathology2021_single_label_policy",
+      "docs_datasets_used_folders",
+      "docs_datasets_why_raw_datasets_are_not_physically_split"
+    ],
+    "82": [
+      "docs_mlflow",
+      "docs_mlflow_baseline_real_run",
+      "docs_mlflow_baseline_smoke_runs",
+      "docs_mlflow_cuda_appleleaf9_full_baseline",
+      "docs_mlflow_logged_mlflow_content",
+      "docs_mlflow_mlflow_tracking",
+      "docs_mlflow_results_baseline_files",
+      "docs_mlflow_start_the_mlflow_ui"
+    ],
+    "83": [
+      "docs_superpowers_specs_2026_07_14_graphify_corpus_exclusions_design",
+      "docs_superpowers_specs_2026_07_14_graphify_corpus_exclusions_design_data_flow",
+      "docs_superpowers_specs_2026_07_14_graphify_corpus_exclusions_design_design",
+      "docs_superpowers_specs_2026_07_14_graphify_corpus_exclusions_design_failure_handling",
+      "docs_superpowers_specs_2026_07_14_graphify_corpus_exclusions_design_goal",
+      "docs_superpowers_specs_2026_07_14_graphify_corpus_exclusions_design_graphify_corpus_exclusions_design",
+      "docs_superpowers_specs_2026_07_14_graphify_corpus_exclusions_design_scope",
+      "docs_superpowers_specs_2026_07_14_graphify_corpus_exclusions_design_verification"
+    ],
+    "84": [
+      "src_tracking_experiment_naming",
+      "src_tracking_experiment_naming_build_experiment_name",
+      "src_tracking_experiment_naming_build_run_name",
+      "src_tracking_experiment_naming_normalize",
+      "src_tracking_experiment_naming_rationale_1",
+      "src_tracking_experiment_naming_rationale_11",
+      "src_tracking_experiment_naming_rationale_19"
+    ],
+    "85": [
+      "docs_superpowers_plans_2026_07_14_graphify_corpus_exclusions",
+      "docs_superpowers_plans_2026_07_14_graphify_corpus_exclusions_global_constraints",
+      "docs_superpowers_plans_2026_07_14_graphify_corpus_exclusions_graphify_corpus_exclusions_implementation_plan",
+      "docs_superpowers_plans_2026_07_14_graphify_corpus_exclusions_task_1_add_and_verify_persistent_corpus_exclusions",
+      "docs_superpowers_plans_2026_07_14_graphify_corpus_exclusions_task_2_rebuild_the_filtered_graph_safely",
+      "docs_superpowers_plans_2026_07_14_graphify_corpus_exclusions_task_3_verify_excluded_paths_and_final_artifacts"
+    ],
+    "86": [
+      "docs_environment",
+      "docs_environment_cpu_only_fallback",
+      "docs_environment_environment_setup",
+      "docs_environment_if_cpu_pytorch_was_installed_accidentally",
+      "docs_environment_recommended_cuda_environment_on_windows"
+    ],
+    "87": [
+      "agent_rules_00_project_principles",
+      "agent_rules_00_project_principles_project_principles"
+    ],
+    "88": [
+      "agent_rules_10_clean_code",
+      "agent_rules_10_clean_code_clean_code_rules"
+    ],
+    "89": [
+      "agent_rules_20_clean_architecture",
+      "agent_rules_20_clean_architecture_clean_architecture_rules"
+    ],
+    "90": [
+      "agent_rules_30_ml_experiment_rules",
+      "agent_rules_30_ml_experiment_rules_machine_learning_experiment_rules"
+    ],
+    "91": [
+      "agent_rules_40_git_rules",
+      "agent_rules_40_git_rules_git_rules"
+    ],
+    "92": [
+      "agent_skills_experiment_tracking_skill",
+      "agent_skills_experiment_tracking_skill_skill_experiment_tracking"
+    ],
+    "93": [
+      "agent_skills_git_commit_skill",
+      "agent_skills_git_commit_skill_skill_git_commit_support"
+    ],
+    "94": [
+      "agent_skills_python_project_skill",
+      "agent_skills_python_project_skill_skill_python_project_development"
+    ],
+    "95": [
+      "agent_skills_pytorch_ml_skill",
+      "agent_skills_pytorch_ml_skill_skill_pytorch_ml_development"
+    ],
+    "96": [
+      "agent_workflows_01_feature_development",
+      "agent_workflows_01_feature_development_workflow_feature_development"
+    ],
+    "97": [
+      "agent_workflows_02_dataset_pipeline",
+      "agent_workflows_02_dataset_pipeline_workflow_dataset_pipeline"
+    ],
+    "98": [
+      "agent_workflows_03_training_experiment",
+      "agent_workflows_03_training_experiment_workflow_training_experiment"
+    ],
+    "99": [
+      "agent_workflows_04_result_logging",
+      "agent_workflows_04_result_logging_workflow_result_logging"
+    ],
+    "100": [
+      "src_datasets_init",
+      "src_datasets_init_rationale_1"
+    ]
+  },
+  "cohesion": {
+    "0": 0.06428988895382817,
+    "1": 0.05878084179970972,
+    "2": 0.1014799154334038,
+    "3": 0.12944523470839261,
+    "4": 0.13,
+    "5": 0.22134387351778656,
+    "6": 0.09634146341463415,
+    "7": 0.18947368421052632,
+    "8": 0.2909090909090909,
+    "9": 0.10507246376811594,
+    "10": 0.32142857142857145,
+    "11": 0.3055555555555556,
+    "26": 1.0,
+    "27": 1.0,
+    "41": 1.0,
+    "42": 1.0,
+    "43": 1.0,
+    "44": 1.0,
+    "45": 1.0,
+    "46": 1.0,
+    "47": 1.0,
+    "76": 0.10526315789473684,
+    "77": 0.1111111111111111,
+    "78": 0.16666666666666666,
+    "79": 0.2,
+    "80": 0.2,
+    "81": 0.25,
+    "82": 0.25,
+    "83": 0.25,
+    "84": 0.3333333333333333,
+    "85": 0.3333333333333333,
+    "86": 0.4,
+    "87": 1.0,
+    "88": 1.0,
+    "89": 1.0,
+    "90": 1.0,
+    "91": 1.0,
+    "92": 1.0,
+    "93": 1.0,
+    "94": 1.0,
+    "95": 1.0,
+    "96": 1.0,
+    "97": 1.0,
+    "98": 1.0,
+    "99": 1.0,
+    "100": 1.0
+  },
+  "gods": [
+    {
+      "id": "src_training_train_baseline_main",
+      "label": "main()",
+      "degree": 30
+    },
+    {
+      "id": "src_training_train_teacher_main",
+      "label": "main()",
+      "degree": 28
+    },
+    {
+      "id": "app_ui_utils_get_project_root",
+      "label": "get_project_root()",
+      "degree": 18
+    },
+    {
+      "id": "readme_masterthesis_plant_disease_kd",
+      "label": "MasterThesis Plant Disease KD",
+      "degree": 17
+    },
+    {
+      "id": "src_utils_io_ensure_dir",
+      "label": "ensure_dir()",
+      "degree": 15
+    },
+    {
+      "id": "docs_student_baseline_report_student_baseline_report",
+      "label": "Student Baseline Report",
+      "degree": 15
+    },
+    {
+      "id": "src_training_trainer_fit",
+      "label": "fit()",
+      "degree": 12
+    },
+    {
+      "id": "scripts_analyze_student_baselines_main",
+      "label": "main()",
+      "degree": 11
+    },
+    {
+      "id": "docs_experiment_plan_experiment_plan",
+      "label": "Experiment Plan",
+      "degree": 11
+    },
+    {
+      "id": "app_result_loader_safe_read_json",
+      "label": "safe_read_json()",
+      "degree": 9
+    }
+  ],
+  "surprises": [
+    {
+      "source": "_start_queued_job()",
+      "target": "get_project_root()",
+      "source_files": [
+        "app/experiment_runner.py",
+        "app/ui_utils.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
+      "source": "enqueue_job()",
+      "target": "get_project_root()",
+      "source_files": [
+        "app/experiment_runner.py",
+        "app/ui_utils.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
+      "source": "read_log_tail()",
+      "target": "get_project_root()",
+      "source_files": [
+        "app/experiment_runner.py",
+        "app/ui_utils.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
+      "source": "resolve_log_path()",
+      "target": "get_project_root()",
+      "source_files": [
+        "app/experiment_runner.py",
+        "app/ui_utils.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    },
+    {
+      "source": "get_queue_worker_status()",
+      "target": "get_project_root()",
+      "source_files": [
+        "app/experiment_runner.py",
+        "app/ui_utils.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "calls",
+      "why": "inferred connection - not explicitly stated in source; bridges separate communities"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `main()` connect `main` to `train_teacher.py`, `fit`, `create_splits.py`, `get_model_summary_dict`, `dataloaders.py`, `model_factory.py`, `experiment_naming.py`?",
+      "why": "High betweenness centrality (0.028) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `main()` connect `train_teacher.py` to `main`, `fit`, `create_splits.py`, `get_model_summary_dict`, `dataloaders.py`, `model_factory.py`?",
+      "why": "High betweenness centrality (0.024) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `ensure_dir()` connect `main` to `train_teacher.py`, `fit`, `create_splits.py`?",
+      "why": "High betweenness centrality (0.016) - this node is a cross-community bridge."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 16 inferred relationships involving `main()` (e.g. with `create_dataloaders()` and `create_model()`) actually correct?",
+      "why": "`main()` has 16 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 14 inferred relationships involving `main()` (e.g. with `create_dataloaders()` and `create_model()`) actually correct?",
+      "why": "`main()` has 14 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "verify_inferred",
+      "question": "Are the 13 inferred relationships involving `get_project_root()` (e.g. with `enqueue_job()` and `get_queue_worker_status()`) actually correct?",
+      "why": "`get_project_root()` has 13 INFERRED edges - model-reasoned connections that need verification."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `Subprocess-based experiment runner for the local dashboard.`, `Load dashboard runtime settings.`, `Build a Windows-safe baseline training command.` to the rest of the system?",
+      "why": "199 weakly-connected nodes found - possible documentation gaps or missing edges."
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 docs/DATASETS.md
 src/datasets/__init__.py
@@ -25,6 +26,7 @@ src/tracking/experiment_naming.py
 src/tracking/mlflow_tracker.py
 src/training/__init__.py
 src/training/train_baseline.py
+src/training/train_teacher.py
 src/training/trainer.py
 src/utils/__init__.py
 src/utils/io.py

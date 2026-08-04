@@ -1,0 +1,20 @@
+{
+  "stage": "teacher_cnn",
+  "teacher_family": "cnn",
+  "dataset_name": "plantpathology2021",
+  "model_name": "resnet101",
+  "seed": 42,
+  "image_size": 224,
+  "batch_size": 32,
+  "epochs": 25,
+  "learning_rate": 0.0003,
+  "weight_decay": 0.0001,
+  "pretrained": true,
+  "optimizer": "adamw",
+  "scheduler": "cosine",
+  "early_stopping_patience": 7,
+  "monitor_metric": "val_macro_f1",
+  "num_workers": 4,
+  "device": "auto",
+  "tracking_uri": "sqlite:///mlflow.db"
+}

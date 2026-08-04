@@ -26,7 +26,9 @@ SETTINGS_PATH = get_project_root() / "app" / "dashboard_settings.json"
 
 EPOCH_PATTERN = re.compile(r"epoch\s*[:=/ ]\s*(\d+)(?:/(\d+))?", re.IGNORECASE)
 METRIC_PATTERN = re.compile(
-    r"(train_loss|val_loss|val_accuracy|val_macro_precision|val_macro_recall|val_macro_f1|"
+    r"(train_loss|total_loss|ce_loss|kd_loss|feature_loss|relation_loss|"
+    r"teacher_[a-z0-9_]+_(?:kd|feature|relation)_loss|agreement_[a-z0-9_]+|"
+    r"teacher_student_agreement|ensemble_student_agreement|val_loss|val_accuracy|val_macro_precision|val_macro_recall|val_macro_f1|"
     r"learning_rate|test_accuracy|test_macro_precision|test_macro_recall|test_macro_f1|test_weighted_f1)"
     r"\s*[:=]\s*([0-9]*\.?[0-9]+)",
     re.IGNORECASE,
@@ -118,6 +120,126 @@ def build_baseline_command(
     if tracking_uri:
         command.extend(["--tracking-uri", tracking_uri])
     return command
+
+
+def build_teacher_command(
+    dataset: str,
+    model: str,
+    config: str | None,
+    epochs: int,
+    batch_size: int,
+    image_size: int,
+    learning_rate: float,
+    weight_decay: float,
+    pretrained: bool,
+    dry_run: bool,
+    max_train_batches: int | None = None,
+    max_val_batches: int | None = None,
+    max_test_batches: int | None = None,
+    tracking_uri: str | None = "sqlite:///mlflow.db",
+    gradient_accumulation_steps: int = 1,
+    label_smoothing: float = 0.0,
+    mixed_precision: bool = False,
+    gradient_clip_norm: float | None = None,
+    warmup_epochs: int = 0,
+    scheduler_eta_min: float = 0.0,
+) -> list[str]:
+    """Build a Windows-safe teacher training command."""
+    command = [sys.executable, "src/training/train_teacher.py"]
+    if config:
+        command.extend(["--config", config])
+    else:
+        command.extend(["--dataset", dataset, "--model", model])
+
+    command.extend(
+        [
+            "--dataset",
+            dataset,
+            "--model",
+            model,
+            "--epochs",
+            str(epochs),
+            "--batch-size",
+            str(batch_size),
+            "--image-size",
+            str(image_size),
+            "--lr",
+            str(learning_rate),
+            "--weight-decay",
+            str(weight_decay),
+            "--gradient-accumulation-steps",
+            str(gradient_accumulation_steps),
+            "--label-smoothing",
+            str(label_smoothing),
+            "--warmup-epochs",
+            str(warmup_epochs),
+            "--scheduler-eta-min",
+            str(scheduler_eta_min),
+        ]
+    )
+    command.append("--pretrained" if pretrained else "--no-pretrained")
+    command.append("--mixed-precision" if mixed_precision else "--no-mixed-precision")
+    if gradient_clip_norm is not None:
+        command.extend(["--gradient-clip-norm", str(gradient_clip_norm)])
+    if dry_run:
+        command.append("--dry-run")
+    for flag, value in {
+        "--max-train-batches": max_train_batches,
+        "--max-val-batches": max_val_batches,
+        "--max-test-batches": max_test_batches,
+    }.items():
+        if value is not None and value > 0:
+            command.extend([flag, str(value)])
+    if tracking_uri:
+        command.extend(["--tracking-uri", tracking_uri])
+    return command
+
+
+def build_kd_command(
+    config: str,
+    teacher_run_id: str,
+    teacher_checkpoint: str,
+    *,
+    dry_run: bool = False,
+) -> list[str]:
+    """Build a Windows-safe KD command from a resolved config snapshot."""
+    command = [
+        sys.executable,
+        "src/training/train_kd.py",
+        "--config",
+        config,
+        "--teacher-run-id",
+        teacher_run_id,
+        "--teacher-checkpoint",
+        teacher_checkpoint,
+    ]
+    if dry_run:
+        command.append("--dry-run")
+    return command
+
+
+def build_multi_kd_command(config: str, *, dry_run: bool = False) -> list[str]:
+    """Build a multi-teacher KD command from an immutable config snapshot."""
+    command = [
+        sys.executable,
+        "src/training/train_multi_kd.py",
+        "--config",
+        config,
+    ]
+    if dry_run:
+        command.append("--dry-run")
+    return command
+
+
+def save_job_config_snapshot(payload: dict[str, Any], job_id: str) -> str:
+    """Persist the exact validated UI config consumed by a queued job."""
+    config_dir = RUNS_DIR / "configs"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    path = config_dir / f"{job_id}.json"
+    if path.exists():
+        raise FileExistsError(f"Job config snapshot already exists: {path}")
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path.relative_to(get_project_root()).as_posix()
 
 
 def _job_path(job_id: str) -> Path:

@@ -78,8 +78,8 @@ def log_text(text: str, artifact_file: str) -> None:
     mlflow.log_text(text, artifact_file)
 
 
-def end_run() -> None:
+def end_run(status: str = "FINISHED") -> None:
     """End the active MLflow run if one exists."""
     mlflow = _import_mlflow()
     if mlflow.active_run() is not None:
-        mlflow.end_run()
+        mlflow.end_run(status=status)

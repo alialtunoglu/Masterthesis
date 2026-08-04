@@ -41,7 +41,7 @@ mlflow ui --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlru
 - `Dashboard`: CUDA durumu, veri seti özeti, split JSON özetleri ve son baseline sonuçlarını gösterir.
 - `Baseline Experiments`: baseline eğitim komutlarını hazırlar, dry-run veya gerçek eğitim job'ı başlatabilir.
 - `Job Monitor`: seçilen job için status, PID, süre, log satır sayısı, son görülen epoch/metrik bilgileri ve canlı yenilenen log görüntüsü sağlar.
-- `Results Explorer`: `results/baseline/baseline_results.csv` dosyasını filtreler, skor grafikleri ve artifact görsellerini gösterir.
+- `Results Explorer`: baseline ve CNN teacher sonuçlarını filtreler, artifact görsellerini gösterir ve tamamlanmış tek bir deneyi güvenli şekilde kaldırabilir.
 - `MLflow Helper`: MLflow UI komutlarını ve loglanan içerikleri özetler.
 
 ## Baseline Deney Başlatma
@@ -69,6 +69,19 @@ sqlite:///mlflow.db
 - MLflow kayıtları: `mlruns/`
 
 `runs/jobs/`, `runs/logs/`, `mlruns/` ve checkpoint dosyaları Git'e eklenmemelidir.
+
+## Tek Bir Deneyi Kaldırma
+
+`Results Explorer > Run Artifacts` sekmesinde baseline veya CNN teacher sonuç kaynağı seçilir. Kaldırma işlemi yalnızca sonuç satırında hem `run_name` hem de `mlflow_run_id` bulunduğunda etkinleşir.
+
+İki mod vardır:
+
+- `Arşivle (önerilen)`: run klasörü, checkpoint ve kesin olarak eşleşen job/log dosyaları `_archive/experiment_removals/` altına taşınır.
+- `Yerel dosyaları kalıcı sil`: aynı yerel dosyalar geri alınamayacak şekilde silinir.
+
+Her iki mod da run'ı MLflow'da soft-delete eder ve aynı run'ı içeren sonuç CSV satırlarını kaldırır. Böylece kayıt normal MLflow ve Streamlit görünümlerinde görünmez. MLflow garbage collection otomatik çalıştırılmaz.
+
+Yanlış deneyi kaldırmayı önlemek için kullanıcıdan `KALDIR {run_name}` metnini birebir yazması ve ayrıca onay kutusunu işaretlemesi istenir. Eşleşen job `queued` veya `running` durumundaysa işlem başlamaz. Dosya veya MLflow işlemlerinden biri commit öncesinde başarısız olursa CSV ve taşınmış dosyalar geri alınır; daha önce soft-delete edilen MLflow run'ı restore edilir.
 
 ## Job Queue
 

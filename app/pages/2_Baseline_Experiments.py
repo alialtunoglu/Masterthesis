@@ -21,6 +21,7 @@ from experiment_runner import (
     read_log_tail,
     start_job,
 )
+from portable_notebook import render_notebook_download
 from result_loader import safe_read_json
 from ui_utils import get_project_root
 
@@ -186,6 +187,13 @@ command = build_baseline_command(
 
 st.subheader("Komut Önizlemesi")
 st.code(_quote_command(command), language="powershell")
+render_notebook_download(
+    stage="baseline",
+    dataset=dataset,
+    model=model,
+    command=command,
+    key="baseline_notebook_download",
+)
 
 button_cols = st.columns(2)
 with button_cols[0]:
