@@ -90,7 +90,7 @@ class PortableNotebookTests(unittest.TestCase):
         self.assertNotIn("if Path('/kaggle/input').exists()", source)
         self.assertIn("KAGGLE_KERNEL_RUN_TYPE", source)
 
-    def test_training_prioritizes_project_src_and_preserves_subprocess_output(self):
+    def test_training_prioritizes_project_src_and_streams_subprocess_output(self):
         source = _notebook_source(
             build_portable_notebook(
                 repository_url="https://github.com/example/project.git",
@@ -104,8 +104,11 @@ class PortableNotebookTests(unittest.TestCase):
 
         self.assertIn("environment['PYTHONPATH']", source)
         self.assertIn("str(Path('src').resolve())", source)
+        self.assertIn("environment['PYTHONUNBUFFERED'] = '1'", source)
+        self.assertIn("subprocess.Popen(", source)
         self.assertIn("stderr=subprocess.STDOUT", source)
-        self.assertIn("print(result.stdout)", source)
+        self.assertIn("for line in process.stdout:", source)
+        self.assertIn("print(line, end='', flush=True)", source)
 
     def test_export_is_disabled_without_origin(self):
         with tempfile.TemporaryDirectory() as directory:

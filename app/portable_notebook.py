@@ -187,17 +187,21 @@ existing_pythonpath = environment.get('PYTHONPATH')
 environment['PYTHONPATH'] = (
     project_src if not existing_pythonpath else project_src + os.pathsep + existing_pythonpath
 )
-result = subprocess.run(
+environment['PYTHONUNBUFFERED'] = '1'
+process = subprocess.Popen(
     command,
     env=environment,
     text=True,
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
+    bufsize=1,
 )
-if result.stdout:
-    print(result.stdout)
-if result.returncode:
-    raise RuntimeError(f'Eğitim başarısız oldu. Exit code: {{result.returncode}}')
+assert process.stdout is not None
+for line in process.stdout:
+    print(line, end='', flush=True)
+returncode = process.wait()
+if returncode:
+    raise RuntimeError(f'Eğitim başarısız oldu. Exit code: {{returncode}}')
 """
     package = f"""import subprocess, sys
 subprocess.run([
