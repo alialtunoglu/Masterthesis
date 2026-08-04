@@ -73,18 +73,86 @@ if not target.exists():
 """
     if dataset == "plantpathology2021":
         return """from pathlib import Path
-import subprocess, sys, zipfile
+import os, shutil, subprocess, sys, zipfile
 target = Path('datasets/PlantPathology2021')
 target.mkdir(parents=True, exist_ok=True)
-subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'kaggle'], check=True)
-subprocess.run(['kaggle', 'competitions', 'download', '-c', 'plant-pathology-2021-fgvc8', '-p', str(target)], check=True)
-archives = list(target.glob('*.zip'))
-while archives:
-    for archive in archives:
-        with zipfile.ZipFile(archive) as bundle:
-            bundle.extractall(target)
-        archive.unlink()
-    archives = list(target.glob('*.zip'))
+required = (target / 'train.csv', target / 'train_images')
+mounted = Path('/kaggle/input/plant-pathology-2021-fgvc8')
+
+if not all(path.exists() for path in required):
+    if all((mounted / path.name).exists() for path in required):
+        for destination in required:
+            if not destination.exists():
+                source = mounted / destination.name
+                destination.symlink_to(source, target_is_directory=source.is_dir())
+        print(f'Kaggle input kullanılıyor: {mounted}')
+    else:
+        if Path('/kaggle/input').exists():
+            raise RuntimeError(
+                'Kaggle Notebook içinde Add Input ile Plant Pathology 2021 - FGVC8 '
+                'yarışma verisini ekleyip hücreyi yeniden çalıştırın.'
+            )
+        credential_files = (
+            Path.home() / '.kaggle' / 'access_token',
+            Path.home() / '.kaggle' / 'kaggle.json',
+        )
+        authenticated = bool(os.environ.get('KAGGLE_API_TOKEN')) or any(
+            path.exists() for path in credential_files
+        )
+        if not authenticated:
+            try:
+                from google.colab import files
+            except ImportError:
+                files = None
+            if files is None:
+                raise RuntimeError(
+                    'Kaggle kimlik doğrulaması bulunamadı. KAGGLE_API_TOKEN ayarlayın '
+                    'veya ~/.kaggle/access_token ya da ~/.kaggle/kaggle.json ekleyin.'
+                )
+            print('Kaggle API credentials gerekli. Açılan pencereden kaggle.json yükleyin.')
+            uploaded = files.upload()
+            if 'kaggle.json' not in uploaded:
+                raise RuntimeError('kaggle.json yüklenmedi; dataset indirme işlemi durduruldu.')
+            credential = credential_files[1]
+            credential.parent.mkdir(parents=True, exist_ok=True)
+            credential.write_bytes(uploaded['kaggle.json'])
+            credential.chmod(0o600)
+
+        if shutil.which('kaggle') is None:
+            subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'kaggle'], check=True)
+        command = [
+            'kaggle', 'competitions', 'download', '-c',
+            'plant-pathology-2021-fgvc8', '-p', str(target),
+        ]
+        result = subprocess.run(
+            command, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
+        if result.stdout:
+            print(result.stdout)
+        if result.returncode:
+            output = (result.stdout or '').lower()
+            if 'authenticate' in output or 'unauthorized' in output or '401' in output:
+                hint = 'Kaggle API token geçersiz veya eksik.'
+            elif 'forbidden' in output or '403' in output or 'rule' in output:
+                hint = (
+                    'Plant Pathology 2021 yarışma kurallarını aynı Kaggle hesabıyla '
+                    'kabul edin.'
+                )
+            else:
+                hint = 'Kaggle indirmesi başarısız oldu; yukarıdaki CLI çıktısını inceleyin.'
+            raise RuntimeError(hint)
+
+        archives = list(target.glob('*.zip'))
+        while archives:
+            for archive in archives:
+                with zipfile.ZipFile(archive) as bundle:
+                    bundle.extractall(target)
+                archive.unlink()
+            archives = list(target.glob('*.zip'))
+
+if not all(path.exists() for path in required):
+    missing = ', '.join(str(path) for path in required if not path.exists())
+    raise FileNotFoundError(f'Plant Pathology dataset eksik: {missing}')
 """
     raise ValueError(f"Unsupported dataset: {dataset}")
 
@@ -121,7 +189,11 @@ subprocess.run([
         "cells": [
             _cell("markdown", f"# {dataset} · {model}\nGenerated from commit `{source_commit}`."),
             _cell("code", clone),
-            _cell("markdown", "## Dataset preparation\nKaggle verisi için API credentials gerekir."),
+            _cell(
+                "markdown",
+                "## Dataset preparation\nKaggle bağlı input varsa doğrudan kullanılır; "
+                "indirme gerekirse Colab güvenli biçimde `kaggle.json` yüklemenizi ister.",
+            ),
             _cell("code", _dataset_setup(dataset)),
             _cell("markdown", "## Training"),
             _cell("code", train),
