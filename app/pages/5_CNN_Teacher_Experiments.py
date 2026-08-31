@@ -180,7 +180,7 @@ jobs = list_jobs()
 if jobs:
     jobs_df = pd.DataFrame(jobs)
     display_cols = ["job_id", "stage", "dataset", "model", "status", "queued_time", "start_time", "process_id", "log_path"]
-    st.dataframe(jobs_df[[col for col in display_cols if col in jobs_df.columns]], use_container_width=True)
+    st.dataframe(jobs_df[[col for col in display_cols if col in jobs_df.columns]], width="stretch")
     selected_job = st.selectbox("Log görüntülenecek job", [job["job_id"] for job in jobs])
     selected = next(job for job in jobs if job["job_id"] == selected_job)
     st.page_link("pages/3_Job_Monitor.py", label="Canlı takip için Job Monitor'a git")

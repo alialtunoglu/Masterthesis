@@ -16,6 +16,14 @@ import pandas as pd
 
 
 ACCEPTED_STAGES = {"baseline", "teacher_cnn", "teacher_vision_transformer"}
+# Imported runs must land in the same experiments local training writes to.
+# Kept literal so this module stays free of src/ imports; the pairing with
+# src.tracking.mlflow_tracker.DEFAULT_EXPERIMENT_NAME is asserted in the tests.
+EXPERIMENT_NAMES = {
+    "baseline": "MasterThesis-Baseline",
+    "teacher_cnn": "MasterThesis-CNN-Teachers",
+    "teacher_vision_transformer": "MasterThesis-Vision-Transformer-Teachers",
+}
 DATASETS = {"appleleaf9", "plantvillage", "plantpathology2021"}
 MODELS = {
     "baseline": {"mobilenet_v3_small", "mobilenet_v3_large", "efficientnet_b0", "resnet18"},
@@ -141,12 +149,7 @@ def _default_register_run(manifest: dict, paths: list[Path]) -> str:
 
     row = manifest["result_row"]
     mlflow.set_tracking_uri(str(row.get("tracking_uri") or "sqlite:///mlflow.db"))
-    experiments = {
-        "baseline": "MasterThesis-Baselines",
-        "teacher_cnn": "MasterThesis-CNN-Teachers",
-        "teacher_vision_transformer": "MasterThesis-Vision-Transformer-Teachers",
-    }
-    mlflow.set_experiment(experiments[manifest["stage"]])
+    mlflow.set_experiment(EXPERIMENT_NAMES[manifest["stage"]])
     tags = {
         "execution_origin": "external",
         "external_bundle_id": manifest["bundle_id"],

@@ -8,7 +8,7 @@ class StreamlitVitPageTests(unittest.TestCase):
         # Entered through the main app so st.page_link can resolve the target.
         app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
         app.switch_page(
-            "pages/9_Vision_Transformer_Teacher_Experiments.py"
+            "pages/6_Vision_Transformer_Teacher_Experiments.py"
         ).run(timeout=60)
         self.assertFalse(app.exception)
         self.assertEqual(app.selectbox[0].label, "Dataset")

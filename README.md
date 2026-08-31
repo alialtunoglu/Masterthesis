@@ -181,10 +181,10 @@ Dashboard sayfaları:
 - Job Monitor
 - Results Explorer
 - CNN Teacher Experiments
+- Vision Transformer Teacher Experiments
 - MLflow Helper
 - Knowledge Distillation
 - Multi-Teacher Knowledge Distillation
-- Vision Transformer Teacher Experiments
 
 ## Queue Worker
 

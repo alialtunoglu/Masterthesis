@@ -22,13 +22,13 @@ st.page_link("pages/3_Job_Monitor.py", label="Job Monitor")
 st.page_link("pages/4_Results_Explorer.py", label="Results Explorer")
 st.page_link("pages/5_CNN_Teacher_Experiments.py", label="CNN Teacher Experiments")
 st.page_link(
-    "pages/9_Vision_Transformer_Teacher_Experiments.py",
+    "pages/6_Vision_Transformer_Teacher_Experiments.py",
     label="Vision Transformer Teacher Experiments",
 )
-st.page_link("pages/6_MLflow_Helper.py", label="MLflow Helper")
-st.page_link("pages/7_Knowledge_Distillation.py", label="Knowledge Distillation")
+st.page_link("pages/7_MLflow_Helper.py", label="MLflow Helper")
+st.page_link("pages/8_Knowledge_Distillation.py", label="Knowledge Distillation")
 st.page_link(
-    "pages/8_Multi_Teacher_Knowledge_Distillation.py",
+    "pages/9_Multi_Teacher_Knowledge_Distillation.py",
     label="Multi-Teacher Knowledge Distillation",
 )
 

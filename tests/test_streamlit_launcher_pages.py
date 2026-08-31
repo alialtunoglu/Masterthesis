@@ -9,7 +9,7 @@ LAUNCHERS = (
     ("app/pages/2_Baseline_Experiments.py", "Eğitimi Başlat"),
     ("app/pages/5_CNN_Teacher_Experiments.py", "Teacher Eğitimi Başlat"),
     (
-        "app/pages/9_Vision_Transformer_Teacher_Experiments.py",
+        "app/pages/6_Vision_Transformer_Teacher_Experiments.py",
         "ViT Eğitimi Başlat",
     ),
 )
@@ -19,9 +19,9 @@ CONFIRM_LABEL = "Uzun süren eğitimi onaylıyorum"
 # The KD pages launch the same class of long GPU job from two explicit
 # buttons, so they need the confirmation gate but not the dry-run guard.
 DISTILLERS = (
-    ("app/pages/7_Knowledge_Distillation.py", "KD Eğitimini Başlat"),
+    ("app/pages/8_Knowledge_Distillation.py", "KD Eğitimini Başlat"),
     (
-        "app/pages/8_Multi_Teacher_Knowledge_Distillation.py",
+        "app/pages/9_Multi_Teacher_Knowledge_Distillation.py",
         "Multi-KD Eğitimini Başlat",
     ),
 )
@@ -129,7 +129,7 @@ class LauncherLayoutTests(unittest.TestCase):
 
 class VitImageSizeTests(unittest.TestCase):
     def test_fixed_image_size_is_not_rendered_as_a_dead_input(self):
-        app = _run("app/pages/9_Vision_Transformer_Teacher_Experiments.py")
+        app = _run("app/pages/6_Vision_Transformer_Teacher_Experiments.py")
         labels = [widget.label for widget in app.number_input]
         self.assertNotIn("Image size", labels)
 
