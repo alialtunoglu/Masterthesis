@@ -11,6 +11,38 @@ import pandas as pd
 from ui_utils import get_project_root
 
 
+def _default_mlflow_client(tracking_uri: str):
+    from mlflow.tracking import MlflowClient
+
+    return MlflowClient(tracking_uri=tracking_uri)
+
+
+def mlflow_experiment_overview(
+    tracking_uri: str, client_factory: Any = None
+) -> list[dict[str, Any]]:
+    """List the experiments in the tracking store with their run counts.
+
+    Read live rather than hardcoded so the page cannot drift out of date, and
+    degrade to an empty list when the store is missing or unreadable.
+    """
+    factory = client_factory or _default_mlflow_client
+    try:
+        client = factory(tracking_uri)
+        experiments = client.search_experiments()
+    except Exception:
+        return []
+    rows = []
+    for experiment in experiments:
+        try:
+            runs = len(client.search_runs([experiment.experiment_id], max_results=1000))
+        except Exception:
+            runs = 0
+        if experiment.name == "Default" and not runs:
+            continue
+        rows.append({"experiment": experiment.name, "runs": runs})
+    return sorted(rows, key=lambda row: row["experiment"])
+
+
 def load_csv_if_exists(path: str | Path) -> pd.DataFrame | None:
     """Load a CSV file when it exists."""
     candidate = Path(path)

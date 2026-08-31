@@ -21,7 +21,9 @@ st.title("Dashboard")
 
 st.subheader("CUDA Durumu")
 try:
-    import torch
+    # The first import costs a couple of seconds; later reruns are instant.
+    with st.spinner("PyTorch yükleniyor..."):
+        import torch
 
     cuda_available = torch.cuda.is_available()
     cols = st.columns(3)
@@ -65,6 +67,9 @@ if vit_df is not None and not vit_df.empty:
 else:
     st.info("results/teachers/vision_transformers/teacher_results.csv henüz yok veya boş.")
 
-st.subheader("MLflow UI")
-st.code("mlflow ui --host 127.0.0.1 --port 5000", language="powershell")
+st.subheader("MLflow")
 st.link_button("MLflow UI Aç", "http://127.0.0.1:5000")
+st.page_link(
+    "pages/7_MLflow_Helper.py",
+    label="Başlatma komutu ve kayıtlı deneyler için MLflow Helper'a git",
+)

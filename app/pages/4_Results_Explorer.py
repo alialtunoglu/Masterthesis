@@ -670,7 +670,7 @@ with tabs[0]:
                 st.bar_chart(model_scores["test_macro_f1"])
 
 with tabs[1]:
-    st.subheader("Student Baseline Figures")
+    st.subheader("Student Baseline Grafikleri")
     for figure in STUDENT_FIGURES:
         path = get_project_root() / figure
         if path.exists():
