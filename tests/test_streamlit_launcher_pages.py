@@ -16,6 +16,16 @@ LAUNCHERS = (
 
 CONFIRM_LABEL = "Uzun süren eğitimi onaylıyorum"
 
+# The KD pages launch the same class of long GPU job from two explicit
+# buttons, so they need the confirmation gate but not the dry-run guard.
+DISTILLERS = (
+    ("app/pages/7_Knowledge_Distillation.py", "KD Eğitimini Başlat"),
+    (
+        "app/pages/8_Multi_Teacher_Knowledge_Distillation.py",
+        "Multi-KD Eğitimini Başlat",
+    ),
+)
+
 
 def _run(path: str) -> AppTest:
     """Enter the page the way a user does, so st.page_link resolves."""
@@ -74,6 +84,18 @@ class TrainingLaunchGuardTests(unittest.TestCase):
                     _widget(app.button, launch_label).disabled,
                     "dry run must not be launchable as real training",
                 )
+
+
+class DistillationLaunchGuardTests(unittest.TestCase):
+    def test_distillation_training_also_requires_confirmation(self):
+        for path, launch_label in DISTILLERS:
+            with self.subTest(page=path):
+                app = _run(path)
+                self.assertIn(
+                    CONFIRM_LABEL,
+                    [checkbox.label for checkbox in app.checkbox],
+                )
+                self.assertTrue(_widget(app.button, launch_label).disabled)
 
 
 class LauncherLayoutTests(unittest.TestCase):

@@ -383,6 +383,9 @@ with buttons[0]:
         st.success(f"Dry-run kuyruğa eklendi: {job['job_id']} | {job['status']}")
 with buttons[1]:
     st.warning("Gerçek KD eğitimi GPU kullanabilir ve uzun sürebilir.")
-    if st.button("KD Eğitimini Başlat", type="primary", disabled=not valid):
+    confirmed = st.checkbox("Uzun süren eğitimi onaylıyorum")
+    if st.button(
+        "KD Eğitimini Başlat", type="primary", disabled=not valid or not confirmed
+    ):
         job = queue_job(resolved, selected_teacher, dry_run=False)
         st.success(f"KD eğitimi kuyruğa eklendi: {job['job_id']} | {job['status']}")
