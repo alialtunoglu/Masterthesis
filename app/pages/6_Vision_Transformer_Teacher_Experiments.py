@@ -13,7 +13,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from experiment_runner import build_teacher_command, list_jobs, read_log_tail, start_job
+from experiment_runner import build_teacher_command, jobs_for_stage, read_log_tail, start_job
 from portable_notebook import render_notebook_download
 from result_loader import safe_read_json
 from ui_utils import get_project_root
@@ -151,7 +151,7 @@ render_notebook_download(
 )
 
 st.subheader("Aktif / Son ViT İşleri")
-jobs = [job for job in list_jobs() if job.get("stage") == "teacher_vision_transformer"]
+jobs = jobs_for_stage("teacher_vision_transformer")
 if jobs:
     frame = pd.DataFrame(jobs)
     columns = ["job_id", "dataset", "model", "status", "queued_time", "start_time", "log_path"]

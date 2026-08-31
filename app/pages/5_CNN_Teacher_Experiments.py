@@ -14,10 +14,10 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from experiment_runner import build_teacher_command, list_jobs, read_log_tail, start_job
+from experiment_runner import build_teacher_command, jobs_for_stage, read_log_tail, start_job
 from portable_notebook import render_notebook_download
 from result_loader import safe_read_json
-from ui_utils import get_project_root
+from ui_utils import config_selection_mismatches, get_project_root
 
 
 DATASETS = ["appleleaf9", "plantvillage", "plantpathology2021"]
@@ -108,6 +108,9 @@ with right:
     weight_decay = st.number_input("Weight decay", min_value=0.0, value=float(defaults.get("weight_decay", 0.0001)), format="%.6f")
     tracking_uri = st.text_input("MLflow tracking URI", value=str(defaults.get("tracking_uri") or "sqlite:///mlflow.db"))
 
+for mismatch in config_selection_mismatches(defaults, dataset, model):
+    st.warning(mismatch)
+
 st.subheader("Smoke Test Limitleri")
 limit_cols = st.columns(3)
 with limit_cols[0]:
@@ -175,8 +178,8 @@ render_notebook_download(
     key="cnn_teacher_notebook_download",
 )
 
-st.subheader("Aktif / Son İşler")
-jobs = list_jobs()
+st.subheader("Aktif / Son CNN Teacher İşleri")
+jobs = jobs_for_stage("teacher_cnn")
 if jobs:
     jobs_df = pd.DataFrame(jobs)
     display_cols = ["job_id", "stage", "dataset", "model", "status", "queued_time", "start_time", "process_id", "log_path"]

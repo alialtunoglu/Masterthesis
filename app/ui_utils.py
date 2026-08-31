@@ -13,6 +13,23 @@ def get_project_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def config_selection_mismatches(
+    defaults: dict[str, Any], dataset: str, model: str
+) -> list[str]:
+    """Describe where the pickers disagree with the selected config file.
+
+    The launcher pages seed dataset and model from the config but let both be
+    changed afterwards, so the command can carry a --config that contradicts
+    its own --dataset.
+    """
+    fields = (("dataset_name", "Dataset", dataset), ("model_name", "Model", model))
+    return [
+        f"{title} config'de '{defaults[key]}' ama '{chosen}' seçili."
+        for key, title, chosen in fields
+        if defaults.get(key) and defaults[key] != chosen
+    ]
+
+
 def format_metric(value: Any) -> str:
     """Format a metric value for display."""
     if pd.isna(value):

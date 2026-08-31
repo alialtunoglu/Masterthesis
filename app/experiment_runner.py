@@ -334,6 +334,19 @@ def list_jobs() -> list[dict[str, Any]]:
     return jobs
 
 
+def jobs_for_stage(
+    stage: str, jobs: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
+    """List the jobs belonging to one pipeline stage.
+
+    Baseline jobs queued before the stage key existed carry no stage at all,
+    so they are claimed by "baseline" and by nothing else.
+    """
+    if jobs is None:
+        jobs = list_jobs()
+    return [job for job in jobs if (job.get("stage") or "baseline") == stage]
+
+
 def promote_queued_jobs(jobs: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     """Start queued jobs while respecting the max_parallel_jobs setting."""
     _ensure_run_dirs()
