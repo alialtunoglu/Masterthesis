@@ -458,16 +458,21 @@ Temizlenen/arşivlenenler:
 ```text
 mlruns/
 mlflow.db
+mlruns.db
 checkpoints/
 runs/jobs/
 runs/logs/
 results/baseline/
 results/teachers/
-results/vit_teachers/
-results/kd_single/
-results/kd_multi/
+results/knowledge_distillation/
+results/multi_teacher_knowledge_distillation/
 results/quantization/
 ```
+
+Eski isimlendirmeden kalan `results/vit_teachers/`, `results/kd_single/`,
+`results/kd_multi/` ve `results/experiments/` de temizlenir, ancak yeniden
+oluşturulmaz. Reset sonrası yalnızca eğitim hatlarının gerçekten yazdığı dizinler
+boş olarak geri kurulur.
 
 ## Önerilen Çalıştırma Sırası
 
@@ -484,8 +489,11 @@ results/quantization/
 ## Daha Fazla Dokümantasyon
 
 - `docs/DATASETS.md`
+- `docs/ENVIRONMENT.md`
 - `docs/MLFLOW.md`
 - `docs/WEB_UI.md`
 - `docs/STUDENT_BASELINE_REPORT.md`
 - `docs/CNN_TEACHERS.md`
 - `docs/EXPERIMENT_PLAN.md`
+- `docs/EXPERIMENT_RESULTS_ANALYSIS.md`
+- `docs/KD_RESULTS_ANALYSIS.md`

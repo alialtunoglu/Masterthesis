@@ -11,6 +11,24 @@ from typing import NamedTuple
 
 CRITICAL_DIRS = ["datasets", "splits", "src", "configs", "docs", ".agent"]
 
+# Directories the training entry points actually write to.
+CURRENT_RESULT_DIRS = [
+    "results/baseline",
+    "results/teachers",
+    "results/knowledge_distillation",
+    "results/multi_teacher_knowledge_distillation",
+    "results/quantization",
+]
+
+# Directories used by earlier naming schemes. They are still cleaned so a reset
+# leaves nothing behind, but they are never recreated.
+LEGACY_RESULT_DIRS = [
+    "results/vit_teachers",
+    "results/kd_single",
+    "results/kd_multi",
+    "results/experiments",
+]
+
 OUTPUT_PATHS = [
     "mlruns",
     "mlflow.db",
@@ -18,22 +36,12 @@ OUTPUT_PATHS = [
     "checkpoints",
     "runs/jobs",
     "runs/logs",
-    "results/baseline",
-    "results/teachers",
-    "results/vit_teachers",
-    "results/kd_single",
-    "results/kd_multi",
-    "results/quantization",
-    "results/experiments",
+    *CURRENT_RESULT_DIRS,
+    *LEGACY_RESULT_DIRS,
 ]
 
 RECREATE_DIRS = [
-    "results/baseline",
-    "results/teachers",
-    "results/vit_teachers",
-    "results/kd_single",
-    "results/kd_multi",
-    "results/quantization",
+    *CURRENT_RESULT_DIRS,
     "checkpoints",
     "runs/jobs",
     "runs/logs",
@@ -149,6 +157,15 @@ def delete_paths(paths: list[Path], project_root: Path) -> ResetResult:
     return ResetResult(deleted, skipped)
 
 
+def existing_output_paths(project_root: Path) -> list[Path]:
+    """Return the generated output paths that currently exist under the project."""
+    return [
+        project_root / relative
+        for relative in OUTPUT_PATHS
+        if (project_root / relative).exists()
+    ]
+
+
 def recreate_empty_dirs(project_root: Path) -> list[str]:
     """Recreate the empty output folder structure required for future experiments."""
     recreated: list[str] = []
@@ -164,7 +181,7 @@ def main() -> None:
     project_root = find_project_root()
     validate_project_root(project_root)
 
-    existing_paths = [project_root / relative for relative in OUTPUT_PATHS if (project_root / relative).exists()]
+    existing_paths = existing_output_paths(project_root)
     missing_paths = [relative for relative in OUTPUT_PATHS if not (project_root / relative).exists()]
 
     print(f"Project root: {project_root}")
