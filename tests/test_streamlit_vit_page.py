@@ -16,10 +16,14 @@ class StreamlitVitPageTests(unittest.TestCase):
         self.assertEqual(app.selectbox[2].label, "Config dosyası")
         self.assertIn("swin_v2_t.json", app.selectbox[2].value)
 
-    def test_results_explorer_exposes_external_import(self):
+    def test_results_explorer_tabs_are_short_and_match_their_headings(self):
         app = AppTest.from_file("app/pages/4_Results_Explorer.py").run(timeout=60)
         self.assertFalse(app.exception)
-        self.assertIn("External Run Import", [tab.label for tab in app.tabs])
+        labels = [tab.label for tab in app.tabs]
+        # "Tables" also held two bar charts, and two labels contradicted the
+        # Turkish heading rendered directly beneath them.
+        self.assertEqual(labels, ["Sonuçlar", "Grafikler", "Artifactler", "İçe Aktar"])
+        self.assertTrue(all(len(label) <= 12 for label in labels), labels)
 
 
 if __name__ == "__main__":
