@@ -5,9 +5,11 @@ from streamlit.testing.v1 import AppTest
 
 class StreamlitVitPageTests(unittest.TestCase):
     def test_vit_page_selection_order_and_config(self):
-        app = AppTest.from_file(
-            "app/pages/9_Vision_Transformer_Teacher_Experiments.py"
-        ).run(timeout=30)
+        # Entered through the main app so st.page_link can resolve the target.
+        app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
+        app.switch_page(
+            "pages/9_Vision_Transformer_Teacher_Experiments.py"
+        ).run(timeout=60)
         self.assertFalse(app.exception)
         self.assertEqual(app.selectbox[0].label, "Dataset")
         self.assertEqual(app.selectbox[1].label, "Vision Transformer teacher model")

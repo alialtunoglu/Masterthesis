@@ -136,13 +136,6 @@ command = build_teacher_command(
 
 st.subheader("Komut Önizlemesi")
 st.code(quote_command(command), language="powershell")
-render_notebook_download(
-    stage="teacher_cnn",
-    dataset=dataset,
-    model=model,
-    command=command,
-    key="cnn_teacher_notebook_download",
-)
 
 button_cols = st.columns(2)
 with button_cols[0]:
@@ -167,9 +160,20 @@ with button_cols[0]:
         st.success(f"Teacher dry-run kuyruğa eklendi: {job['job_id']} | status={job['status']}")
 with button_cols[1]:
     st.warning("Gerçek teacher eğitimi uzun sürebilir ve GPU kullanır.")
-    if st.button("Teacher Eğitimi Başlat", type="primary"):
+    confirmed = st.checkbox("Uzun süren eğitimi onaylıyorum")
+    if dry_run:
+        st.caption("Dry run açıkken gerçek eğitim başlatılamaz; dry-run butonunu kullanın.")
+    if st.button("Teacher Eğitimi Başlat", type="primary", disabled=dry_run or not confirmed):
         job = start_job(command, {"stage": "teacher_cnn", "dataset": dataset, "model": model, "config": selected_config, "dry_run": dry_run})
         st.success(f"Teacher eğitim işi kuyruğa eklendi: {job['job_id']} | status={job['status']}")
+
+render_notebook_download(
+    stage="teacher_cnn",
+    dataset=dataset,
+    model=model,
+    command=command,
+    key="cnn_teacher_notebook_download",
+)
 
 st.subheader("Aktif / Son İşler")
 jobs = list_jobs()
@@ -180,6 +184,7 @@ if jobs:
     selected_job = st.selectbox("Log görüntülenecek job", [job["job_id"] for job in jobs])
     selected = next(job for job in jobs if job["job_id"] == selected_job)
     st.page_link("pages/3_Job_Monitor.py", label="Canlı takip için Job Monitor'a git")
-    st.code(read_log_tail(selected.get("log_path", ""), n_lines=20), language="text")
+    n_lines = st.slider("Log satır sayısı", min_value=20, max_value=500, value=20, step=20)
+    st.code(read_log_tail(selected.get("log_path", ""), n_lines=n_lines), language="text")
 else:
     st.info("Henüz job metadata dosyası yok.")

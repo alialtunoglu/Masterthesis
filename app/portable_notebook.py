@@ -8,6 +8,8 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
+import streamlit as st
+
 
 @dataclass(frozen=True)
 class RepositoryExportStatus:
@@ -48,6 +50,17 @@ def repository_export_status(root: Path) -> RepositoryExportStatus:
     if not branch or not remote or remote[0] != commit:
         return RepositoryExportStatus(False, "Yerel HEAD önce origin üzerindeki aktif branch'e push edilmeli.")
     return RepositoryExportStatus(True, "Notebook export hazır.", repository_url, commit)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def cached_export_status(root: Path) -> RepositoryExportStatus:
+    """Probe the repository at most once per TTL.
+
+    Streamlit reruns the page on every widget change, and the uncached probe
+    shells out to git four times and reaches the network twice, so without this
+    each keystroke costs the better part of a second.
+    """
+    return repository_export_status(root)
 
 
 def _cell(cell_type: str, source: str) -> dict:
@@ -303,14 +316,16 @@ def render_notebook_download(
     *, stage: str, dataset: str, model: str, command: list[str], key: str
 ) -> None:
     """Render a guarded Streamlit notebook download control."""
-    import streamlit as st
-
     root = Path(__file__).resolve().parents[1]
-    status = repository_export_status(root)
+    status = cached_export_status(root)
     if "--dry-run" in command:
         status = RepositoryExportStatus(False, "Dry-run sonuç paketi üretmez; notebook için dry-run'ı kapatın.")
     st.subheader("Colab / Kaggle Notebook")
-    st.caption(status.message)
+    caption_column, recheck_column = st.columns([4, 1])
+    caption_column.caption(status.message)
+    if recheck_column.button("Yeniden kontrol et", key=f"{key}_recheck"):
+        cached_export_status.clear()
+        st.rerun()
     payload = b""
     if status.ready:
         payload = build_portable_notebook(

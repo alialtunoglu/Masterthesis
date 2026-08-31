@@ -187,13 +187,6 @@ command = build_baseline_command(
 
 st.subheader("Komut Önizlemesi")
 st.code(_quote_command(command), language="powershell")
-render_notebook_download(
-    stage="baseline",
-    dataset=dataset,
-    model=model,
-    command=command,
-    key="baseline_notebook_download",
-)
 
 button_cols = st.columns(2)
 with button_cols[0]:
@@ -227,7 +220,10 @@ with button_cols[0]:
 
 with button_cols[1]:
     st.warning("Bu işlem GPU kullanabilir ve uzun sürebilir.")
-    if st.button("Eğitimi Başlat", type="primary"):
+    confirmed = st.checkbox("Uzun süren eğitimi onaylıyorum")
+    if dry_run:
+        st.caption("Dry run açıkken gerçek eğitim başlatılamaz; dry-run butonunu kullanın.")
+    if st.button("Eğitimi Başlat", type="primary", disabled=dry_run or not confirmed):
         job = start_job(
             command,
             {
@@ -238,6 +234,14 @@ with button_cols[1]:
             },
         )
         st.success(f"Eğitim işi kuyruğa eklendi: {job['job_id']} | status={job['status']}")
+
+render_notebook_download(
+    stage="baseline",
+    dataset=dataset,
+    model=model,
+    command=command,
+    key="baseline_notebook_download",
+)
 
 st.subheader("Aktif / Son İşler")
 jobs = list_jobs()

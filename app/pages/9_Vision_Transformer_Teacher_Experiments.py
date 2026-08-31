@@ -21,6 +21,7 @@ from ui_utils import get_project_root
 
 DATASETS = ["appleleaf9", "plantvillage", "plantpathology2021"]
 VIT_TEACHERS = ["swin_v2_t", "maxvit_t", "vit_b_16", "dinov2_vitb14"]
+IMAGE_SIZE = 224
 
 
 def quote_command(command: list[str]) -> str:
@@ -57,9 +58,7 @@ with left:
     )
     st.caption(f"Effective batch size: {int(batch_size) * int(accumulation)}")
 with right:
-    image_size = st.number_input(
-        "Image size", 224, 224, int(defaults.get("image_size", 224)), disabled=True
-    )
+    st.caption(f"Image size: {IMAGE_SIZE} (ViT teacher'ları için sabit)")
     learning_rate = st.number_input(
         "Learning rate", min_value=0.0, value=float(defaults.get("learning_rate", 1e-4)), format="%.6f"
     )
@@ -100,7 +99,7 @@ def make_command(force_dry_run: bool) -> list[str]:
         config=selected_config,
         epochs=int(epochs),
         batch_size=int(batch_size),
-        image_size=int(image_size),
+        image_size=IMAGE_SIZE,
         learning_rate=float(learning_rate),
         weight_decay=float(weight_decay),
         pretrained=pretrained,
@@ -121,13 +120,6 @@ def make_command(force_dry_run: bool) -> list[str]:
 command = make_command(dry_run)
 st.subheader("Komut Önizlemesi")
 st.code(quote_command(command), language="powershell")
-render_notebook_download(
-    stage="teacher_vision_transformer",
-    dataset=dataset,
-    model=model,
-    command=command,
-    key="vit_notebook_download",
-)
 
 metadata = {
     "stage": "teacher_vision_transformer",
@@ -143,9 +135,20 @@ with buttons[0]:
         st.success(f"ViT dry-run kuyruğa eklendi: {job['job_id']} | {job['status']}")
 with buttons[1]:
     st.warning("Gerçek ViT eğitimi uzun sürebilir ve yüksek GPU belleği kullanabilir.")
-    if st.button("ViT Eğitimi Başlat", type="primary"):
+    confirmed = st.checkbox("Uzun süren eğitimi onaylıyorum")
+    if dry_run:
+        st.caption("Dry run açıkken gerçek eğitim başlatılamaz; dry-run butonunu kullanın.")
+    if st.button("ViT Eğitimi Başlat", type="primary", disabled=dry_run or not confirmed):
         job = start_job(command, {**metadata, "dry_run": dry_run})
         st.success(f"ViT eğitimi kuyruğa eklendi: {job['job_id']} | {job['status']}")
+
+render_notebook_download(
+    stage="teacher_vision_transformer",
+    dataset=dataset,
+    model=model,
+    command=command,
+    key="vit_notebook_download",
+)
 
 st.subheader("Aktif / Son ViT İşleri")
 jobs = [job for job in list_jobs() if job.get("stage") == "teacher_vision_transformer"]
@@ -155,6 +158,8 @@ if jobs:
     st.dataframe(frame[[column for column in columns if column in frame]], width="stretch")
     selected_id = st.selectbox("Log görüntülenecek job", [job["job_id"] for job in jobs])
     selected = next(job for job in jobs if job["job_id"] == selected_id)
-    st.code(read_log_tail(selected.get("log_path", ""), n_lines=20), language="text")
+    st.page_link("pages/3_Job_Monitor.py", label="Canlı takip için Job Monitor'a git")
+    n_lines = st.slider("Log satır sayısı", min_value=20, max_value=500, value=20, step=20)
+    st.code(read_log_tail(selected.get("log_path", ""), n_lines=n_lines), language="text")
 else:
     st.info("Henüz ViT job metadata dosyası yok.")

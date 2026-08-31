@@ -3,9 +3,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from app import portable_notebook
 from app.portable_notebook import (
     _output_resolver_source,
     build_portable_notebook,
+    cached_export_status,
     repository_export_status,
 )
 
@@ -282,6 +284,44 @@ class GeneratedCellSyntaxTests(unittest.TestCase):
             for index, source in enumerate(cells):
                 with self.subTest(dataset=dataset, cell=index):
                     compile(source, f"<{dataset}:cell{index}>", "exec")
+
+
+class CachedExportStatusTests(unittest.TestCase):
+    """Streamlit reruns the whole script on every widget change.
+
+    The status probe shells out to git four times and hits the network twice,
+    so an uncached call makes each keystroke cost most of a second.
+    """
+
+    def setUp(self):
+        cached_export_status.clear()
+        self.addCleanup(cached_export_status.clear)
+
+    def test_repeated_renders_probe_the_repository_only_once(self):
+        calls = []
+        original = portable_notebook.repository_export_status
+
+        def counting(root):
+            calls.append(root)
+            return original(root)
+
+        portable_notebook.repository_export_status = counting
+        self.addCleanup(
+            setattr, portable_notebook, "repository_export_status", original
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for _ in range(3):
+                cached_export_status(root)
+        self.assertEqual(len(calls), 1)
+
+    def test_clearing_the_cache_probes_again(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = cached_export_status(root)
+            cached_export_status.clear()
+            second = cached_export_status(root)
+        self.assertEqual(first, second)
 
 
 if __name__ == "__main__":
