@@ -589,7 +589,7 @@ def _render_interrupted_removal_controls(selected_job: dict[str, object]) -> Non
 st.set_page_config(page_title="Results Explorer", layout="wide")
 st.title("Results Explorer")
 
-tabs = st.tabs(["Tables", "Student Figures", "Run Artifacts", "External Run Import"])
+tabs = st.tabs(["Sonuçlar", "Grafikler", "Artifactler", "İçe Aktar"])
 
 with tabs[0]:
     selected_table_name = st.selectbox("Tablo seç", list(BASELINE_TABLES))
@@ -670,7 +670,7 @@ with tabs[0]:
                 st.bar_chart(model_scores["test_macro_f1"])
 
 with tabs[1]:
-    st.subheader("Student Baseline Figures")
+    st.subheader("Student Baseline Grafikleri")
     for figure in STUDENT_FIGURES:
         path = get_project_root() / figure
         if path.exists():
@@ -707,7 +707,7 @@ with tabs[2]:
     )
 
 with tabs[3]:
-    st.subheader("External Run Import")
+    st.subheader("Harici Run İçe Aktarma")
     st.caption(
         "Colab/Kaggle çıktısını `runs/import_inbox/<bundle_id>/` altına koyun. "
         "ZIP zorunlu, checkpoint isteğe bağlıdır."

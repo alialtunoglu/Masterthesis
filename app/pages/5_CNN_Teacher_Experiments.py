@@ -14,10 +14,10 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from experiment_runner import build_teacher_command, list_jobs, read_log_tail, start_job
+from experiment_runner import build_teacher_command, jobs_for_stage, read_log_tail, start_job
 from portable_notebook import render_notebook_download
 from result_loader import safe_read_json
-from ui_utils import get_project_root
+from ui_utils import config_selection_mismatches, get_project_root
 
 
 DATASETS = ["appleleaf9", "plantvillage", "plantpathology2021"]
@@ -108,6 +108,9 @@ with right:
     weight_decay = st.number_input("Weight decay", min_value=0.0, value=float(defaults.get("weight_decay", 0.0001)), format="%.6f")
     tracking_uri = st.text_input("MLflow tracking URI", value=str(defaults.get("tracking_uri") or "sqlite:///mlflow.db"))
 
+for mismatch in config_selection_mismatches(defaults, dataset, model):
+    st.warning(mismatch)
+
 st.subheader("Smoke Test Limitleri")
 limit_cols = st.columns(3)
 with limit_cols[0]:
@@ -136,13 +139,6 @@ command = build_teacher_command(
 
 st.subheader("Komut Önizlemesi")
 st.code(quote_command(command), language="powershell")
-render_notebook_download(
-    stage="teacher_cnn",
-    dataset=dataset,
-    model=model,
-    command=command,
-    key="cnn_teacher_notebook_download",
-)
 
 button_cols = st.columns(2)
 with button_cols[0]:
@@ -167,19 +163,31 @@ with button_cols[0]:
         st.success(f"Teacher dry-run kuyruğa eklendi: {job['job_id']} | status={job['status']}")
 with button_cols[1]:
     st.warning("Gerçek teacher eğitimi uzun sürebilir ve GPU kullanır.")
-    if st.button("Teacher Eğitimi Başlat", type="primary"):
+    confirmed = st.checkbox("Uzun süren eğitimi onaylıyorum")
+    if dry_run:
+        st.caption("Dry run açıkken gerçek eğitim başlatılamaz; dry-run butonunu kullanın.")
+    if st.button("Teacher Eğitimi Başlat", type="primary", disabled=dry_run or not confirmed):
         job = start_job(command, {"stage": "teacher_cnn", "dataset": dataset, "model": model, "config": selected_config, "dry_run": dry_run})
         st.success(f"Teacher eğitim işi kuyruğa eklendi: {job['job_id']} | status={job['status']}")
 
-st.subheader("Aktif / Son İşler")
-jobs = list_jobs()
+render_notebook_download(
+    stage="teacher_cnn",
+    dataset=dataset,
+    model=model,
+    command=command,
+    key="cnn_teacher_notebook_download",
+)
+
+st.subheader("Aktif / Son CNN Teacher İşleri")
+jobs = jobs_for_stage("teacher_cnn")
 if jobs:
     jobs_df = pd.DataFrame(jobs)
     display_cols = ["job_id", "stage", "dataset", "model", "status", "queued_time", "start_time", "process_id", "log_path"]
-    st.dataframe(jobs_df[[col for col in display_cols if col in jobs_df.columns]], use_container_width=True)
+    st.dataframe(jobs_df[[col for col in display_cols if col in jobs_df.columns]], width="stretch")
     selected_job = st.selectbox("Log görüntülenecek job", [job["job_id"] for job in jobs])
     selected = next(job for job in jobs if job["job_id"] == selected_job)
     st.page_link("pages/3_Job_Monitor.py", label="Canlı takip için Job Monitor'a git")
-    st.code(read_log_tail(selected.get("log_path", ""), n_lines=20), language="text")
+    n_lines = st.slider("Log satır sayısı", min_value=20, max_value=500, value=20, step=20)
+    st.code(read_log_tail(selected.get("log_path", ""), n_lines=n_lines), language="text")
 else:
     st.info("Henüz job metadata dosyası yok.")

@@ -11,14 +11,25 @@ Bilgi Damıtma Yöntemlerinin Karşılaştırmalı Analizi
 
 ## Mevcut Aşamalar
 
+Altyapı:
+
 - Veri seti analizi ve deterministic split üretimi hazır.
 - PyTorch Dataset/DataLoader katmanı hazır.
 - MLflow destekli student baseline pipeline hazır.
-- Streamlit local dashboard hazır.
-- Student baseline deneyleri tamamlandı ve raporlandı.
+- Streamlit local dashboard hazır (9 sayfa) ve queue worker hazır.
 - CNN teacher training altyapısı hazır.
-- Plant Pathology 2021 için logit, feature ve relation tabanlı KD altyapısı hazır.
-- ViT teacher altyapısı sonraki aşamadır.
+- ViT teacher training altyapısı hazır (config, Streamlit sayfası ve testler).
+- Plant Pathology 2021 için logit, feature ve relation tabanlı single-teacher KD altyapısı hazır.
+- Multi-teacher KD altyapısı hazır.
+- Colab/Kaggle için portable notebook üretimi ve harici run import altyapısı hazır.
+
+Üretilmiş sonuçlar:
+
+- Student baseline deneyleri tamamlandı ve raporlandı (3 veri seti x 4 model).
+- CNN teacher deneyleri tamamlandı (AppleLeaf9 ve PlantVillage 10 model, PlantPathology2021 8 model).
+- Single-teacher KD: yalnızca PlantPathology2021 `logit_based` koşuldu.
+- Multi-teacher KD: yalnızca PlantPathology2021 `logit_based` koşuldu.
+- ViT teacher, feature/relation KD ve quantization deneyleri henüz koşulmadı.
 
 ## Knowledge Distillation
 
@@ -170,7 +181,10 @@ Dashboard sayfaları:
 - Job Monitor
 - Results Explorer
 - CNN Teacher Experiments
+- Vision Transformer Teacher Experiments
 - MLflow Helper
+- Knowledge Distillation
+- Multi-Teacher Knowledge Distillation
 
 ## Queue Worker
 
@@ -290,6 +304,94 @@ MLflow experiment:
 MasterThesis-CNN-Teachers
 ```
 
+## ViT Teacher Eğitimi
+
+ViT teacher'lar aynı `train_teacher.py` girişini kullanır; config yolu aileyi belirler.
+
+Configler:
+
+```text
+configs/teachers/vision_transformers/{dataset}/{model}.json
+```
+
+Desteklenen modeller:
+
+```text
+vit_b_16, swin_v2_t, maxvit_t, dinov2_vitb14
+```
+
+Örnek dry-run:
+
+```powershell
+python src/training/train_teacher.py --config configs/teachers/vision_transformers/appleleaf9/vit_b_16.json --dry-run
+```
+
+Streamlit üzerinden:
+
+```text
+Vision Transformer Teacher Experiments -> config seç -> Teacher Eğitimi Başlat
+```
+
+Sonuçlar:
+
+```text
+results/teachers/vision_transformers/teacher_results.csv
+results/teachers/vision_transformers/runs/{dataset}/{model}/{run_name}/
+checkpoints/teachers/vision_transformers/{dataset}/{model}/
+```
+
+MLflow experiment:
+
+```text
+MasterThesis-Vision-Transformer-Teachers
+```
+
+## Portable Notebook (Colab / Kaggle)
+
+Baseline, CNN teacher ve ViT teacher sayfaları seçili komuttan çalıştırılabilir bir
+`.ipynb` üretir. Üretilen notebook repoyu klonlar, çalıştırıldığı commit'e checkout
+eder, veri setini hazırlar, eğitimi canlı log akışıyla koşturur ve sonucu
+`scripts/package_external_run.py` ile bundle olarak paketler.
+
+Export yalnızca şu koşullarda etkinleşir:
+
+- `origin` public bir `https://github.com/...` adresi olmalı.
+- Çalışma ağacı temiz olmalı.
+- Yerel HEAD, origin üzerindeki aktif branch'e push edilmiş olmalı.
+- Komut `--dry-run` içermemeli.
+
+Sonuç bundle'ı kalıcı bir konuma yazılır; çalışma zamanı kapanınca kaybolmaz:
+
+| Ortam | Bundle konumu |
+|---|---|
+| Google Colab | `/content/drive/MyDrive/MasterThesis/bundles/` |
+| Kaggle | `/kaggle/working/` |
+| Yerel | Çalışma dizini |
+
+Colab'da Drive bağlama onayı notebook'un başındaki `Result destination` hücresinde
+istenir. Onayı defteri başlatırken bir kez verirsiniz; eğitim bittiğinde bilgisayar
+başında olmanız gerekmez. Drive bağlanamazsa hücre çökmez, `/content` altına düşer ve
+bundle'ın kalıcı olmadığını uyarır.
+
+Kaggle'da interaktif oturum boşta kalıp düşerse `/kaggle/working` de kaybolabilir.
+Ekran başında beklememek için defteri `Save Version` ile çalıştırın: notebook headless
+koşar, tarayıcıyı kapatabilirsiniz ve `/kaggle/working` oturum sonunda kalıcı output
+olarak saklanır.
+
+Veri seti hazırlığı ortama göre değişir:
+
+- AppleLeaf9 ve PlantVillage: pinned commit ile GitHub checkout.
+- PlantPathology2021: önce mevcut veri, sonra Kaggle mounted input, sonra Kaggle CLI
+  indirmesi denenir. Colab'da kimlik yoksa `kaggle.json` upload widget'ıyla istenir.
+
+Kimlik bilgileri notebook'a hiçbir zaman yazılmaz.
+
+Dışarıda koşan run'ı geri almak için:
+
+```text
+Results Explorer -> external run import
+```
+
 ## Pretrained Ağırlık Notu
 
 TorchVision modelleri `pretrained=true` ise ağırlık indirmek isteyebilir.
@@ -356,16 +458,21 @@ Temizlenen/arşivlenenler:
 ```text
 mlruns/
 mlflow.db
+mlruns.db
 checkpoints/
 runs/jobs/
 runs/logs/
 results/baseline/
 results/teachers/
-results/vit_teachers/
-results/kd_single/
-results/kd_multi/
+results/knowledge_distillation/
+results/multi_teacher_knowledge_distillation/
 results/quantization/
 ```
+
+Eski isimlendirmeden kalan `results/vit_teachers/`, `results/kd_single/`,
+`results/kd_multi/` ve `results/experiments/` de temizlenir, ancak yeniden
+oluşturulmaz. Reset sonrası yalnızca eğitim hatlarının gerçekten yazdığı dizinler
+boş olarak geri kurulur.
 
 ## Önerilen Çalıştırma Sırası
 
@@ -382,8 +489,11 @@ results/quantization/
 ## Daha Fazla Dokümantasyon
 
 - `docs/DATASETS.md`
+- `docs/ENVIRONMENT.md`
 - `docs/MLFLOW.md`
 - `docs/WEB_UI.md`
 - `docs/STUDENT_BASELINE_REPORT.md`
 - `docs/CNN_TEACHERS.md`
 - `docs/EXPERIMENT_PLAN.md`
+- `docs/EXPERIMENT_RESULTS_ANALYSIS.md`
+- `docs/KD_RESULTS_ANALYSIS.md`

@@ -8,6 +8,8 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
+import streamlit as st
+
 
 @dataclass(frozen=True)
 class RepositoryExportStatus:
@@ -30,7 +32,11 @@ def repository_export_status(root: Path) -> RepositoryExportStatus:
         return RepositoryExportStatus(False, "Notebook export için public bir origin remote gerekli.")
     if not repository_url.startswith("https://github.com/"):
         return RepositoryExportStatus(False, "origin public bir HTTPS GitHub adresi olmalı.")
-    if _git(root, "status", "--porcelain"):
+    try:
+        pending_changes = _git(root, "status", "--porcelain")
+    except (subprocess.SubprocessError, OSError):
+        return RepositoryExportStatus(False, "Git deposu okunamadı; repository durumu doğrulanamıyor.")
+    if pending_changes:
         return RepositoryExportStatus(False, "Notebook export için çalışma ağacı temiz olmalı.")
     try:
         with urllib.request.urlopen(repository_url.removesuffix(".git"), timeout=5) as response:
@@ -46,11 +52,55 @@ def repository_export_status(root: Path) -> RepositoryExportStatus:
     return RepositoryExportStatus(True, "Notebook export hazır.", repository_url, commit)
 
 
+@st.cache_data(ttl=30, show_spinner=False)
+def cached_export_status(root: Path) -> RepositoryExportStatus:
+    """Probe the repository at most once per TTL.
+
+    Streamlit reruns the page on every widget change, and the uncached probe
+    shells out to git four times and reaches the network twice, so without this
+    each keystroke costs the better part of a second.
+    """
+    return repository_export_status(root)
+
+
 def _cell(cell_type: str, source: str) -> dict:
     cell = {"cell_type": cell_type, "metadata": {}, "source": source.splitlines(keepends=True)}
     if cell_type == "code":
         cell.update({"execution_count": None, "outputs": []})
     return cell
+
+
+def _output_resolver_source() -> str:
+    """Source defining the pure bundle-output resolver used by the notebook."""
+    return """from pathlib import Path
+
+
+KAGGLE_ENVIRONMENT_NAMES = (
+    'KAGGLE_KERNEL_RUN_TYPE', 'KAGGLE_URL_BASE', 'KAGGLE_DATA_PROXY_URL',
+)
+
+
+def resolve_bundle_output(environment, mount, drive_root=Path('/content/drive')):
+    \"\"\"Return (output_directory, message) for the result bundle.\"\"\"
+    if any(environment.get(name) for name in KAGGLE_ENVIRONMENT_NAMES):
+        return '/kaggle/working', (
+            'Kaggle: bundle /kaggle/working altina yazilacak. Kalici olmasi icin '
+            'defteri Save Version ile calistirin.'
+        )
+    if 'COLAB_RELEASE_TAG' in environment:
+        try:
+            mount('/content/drive')
+        except Exception as error:
+            return '/content', (
+                'UYARI: Google Drive baglanamadi (' + str(error) + '). Bundle '
+                '/content altina yazilacak ve calisma zamani kapaninca silinecek; '
+                'oturum bitmeden indirin.'
+            )
+        target = drive_root / 'MyDrive' / 'MasterThesis' / 'bundles'
+        target.mkdir(parents=True, exist_ok=True)
+        return str(target), 'Drive baglandi. Bundle su dizine yazilacak: ' + str(target)
+    return '.', 'Yerel calisma dizinine yazilacak.'
+"""
 
 
 def _dataset_setup(dataset: str) -> str:
@@ -203,17 +253,43 @@ returncode = process.wait()
 if returncode:
     raise RuntimeError(f'Eğitim başarısız oldu. Exit code: {{returncode}}')
 """
+    output_setup = _output_resolver_source() + """
+
+import os
+
+try:
+    from google.colab import drive as _colab_drive
+except ImportError:
+    def _mount(mountpoint):
+        raise RuntimeError('google.colab bu ortamda yok.')
+else:
+    _mount = _colab_drive.mount
+
+BUNDLE_OUTPUT, _output_message = resolve_bundle_output(os.environ, _mount)
+print(_output_message)
+"""
     package = f"""import subprocess, sys
 subprocess.run([
     sys.executable, 'scripts/package_external_run.py',
     '--stage', {stage!r}, '--dataset', {dataset!r}, '--model', {model!r},
-    '--source-commit', {source_commit!r}, '--output', '/content' if 'COLAB_RELEASE_TAG' in __import__('os').environ else '.',
+    '--source-commit', {source_commit!r}, '--output', BUNDLE_OUTPUT,
 ], check=True)
+print('Bundle dizini:', BUNDLE_OUTPUT)
 """
     notebook = {
         "cells": [
             _cell("markdown", f"# {dataset} · {model}\nGenerated from commit `{source_commit}`."),
             _cell("code", clone),
+            _cell(
+                "markdown",
+                "## Result destination\n"
+                "Sonuç bundle'ının nereye yazılacağı burada belirlenir. "
+                "Colab'da Drive bağlama onayını **şimdi** verin; eğitim bittiğinde "
+                "bilgisayar başında olmanız gerekmez. Kaggle'da bundle "
+                "`/kaggle/working` altına yazılır, kalıcı olması için defteri "
+                "Save Version ile çalıştırın.",
+            ),
+            _cell("code", output_setup),
             _cell(
                 "markdown",
                 "## Dataset preparation\nKaggle bağlı input varsa doğrudan kullanılır; "
@@ -240,14 +316,16 @@ def render_notebook_download(
     *, stage: str, dataset: str, model: str, command: list[str], key: str
 ) -> None:
     """Render a guarded Streamlit notebook download control."""
-    import streamlit as st
-
     root = Path(__file__).resolve().parents[1]
-    status = repository_export_status(root)
+    status = cached_export_status(root)
     if "--dry-run" in command:
         status = RepositoryExportStatus(False, "Dry-run sonuç paketi üretmez; notebook için dry-run'ı kapatın.")
     st.subheader("Colab / Kaggle Notebook")
-    st.caption(status.message)
+    caption_column, recheck_column = st.columns([4, 1])
+    caption_column.caption(status.message)
+    if recheck_column.button("Yeniden kontrol et", key=f"{key}_recheck"):
+        cached_export_status.clear()
+        st.rerun()
     payload = b""
     if status.ready:
         payload = build_portable_notebook(

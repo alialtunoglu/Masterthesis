@@ -17,13 +17,13 @@ if str(APP_DIR) not in sys.path:
 from experiment_runner import (
     build_baseline_command,
     load_dashboard_settings,
-    list_jobs,
+    jobs_for_stage,
     read_log_tail,
     start_job,
 )
 from portable_notebook import render_notebook_download
 from result_loader import safe_read_json
-from ui_utils import get_project_root
+from ui_utils import config_selection_mismatches, get_project_root
 
 
 DATASETS = ["appleleaf9", "plantvillage", "plantpathology2021"]
@@ -103,17 +103,16 @@ st.info(f"Queue aktif. Aynı anda çalışacak maksimum eğitim sayısı: {setti
 
 config_index = _load_config_index()
 st.subheader("Config Seçimi")
-filter_cols = st.columns(4)
+filter_cols = st.columns(3)
 with filter_cols[0]:
-    stage_filter = st.selectbox("Stage filtresi", ["baseline", "all"])
-with filter_cols[1]:
     dataset_filter = st.selectbox("Dataset filtresi", ["all"] + DATASETS)
-with filter_cols[2]:
+with filter_cols[1]:
     model_filter = st.selectbox("Model filtresi", ["all"] + MODELS)
-with filter_cols[3]:
+with filter_cols[2]:
     search_filter = st.text_input("Config ara", value="")
 
-filtered_configs = _filter_configs(config_index, stage_filter, dataset_filter, model_filter, search_filter)
+# Every config under CONFIG_ROOTS is a baseline config, so stage never narrows.
+filtered_configs = _filter_configs(config_index, "all", dataset_filter, model_filter, search_filter)
 st.caption(f"{len(filtered_configs)} config gösteriliyor / toplam {len(config_index)} config")
 config_labels = [_config_label(row) for row in filtered_configs]
 selected_label = st.selectbox("Config dosyası", [""] + config_labels)
@@ -159,6 +158,9 @@ with right:
     )
     tracking_uri = st.text_input("MLflow tracking URI", value=str(defaults.get("tracking_uri") or "sqlite:///mlflow.db"))
 
+for mismatch in config_selection_mismatches(defaults, dataset, model):
+    st.warning(mismatch)
+
 st.subheader("Smoke Test Limitleri")
 limit_cols = st.columns(3)
 with limit_cols[0]:
@@ -187,13 +189,6 @@ command = build_baseline_command(
 
 st.subheader("Komut Önizlemesi")
 st.code(_quote_command(command), language="powershell")
-render_notebook_download(
-    stage="baseline",
-    dataset=dataset,
-    model=model,
-    command=command,
-    key="baseline_notebook_download",
-)
 
 button_cols = st.columns(2)
 with button_cols[0]:
@@ -217,6 +212,7 @@ with button_cols[0]:
         job = start_job(
             dry_command,
             {
+                "stage": "baseline",
                 "dataset": dataset,
                 "model": model,
                 "config": selected_config,
@@ -227,10 +223,14 @@ with button_cols[0]:
 
 with button_cols[1]:
     st.warning("Bu işlem GPU kullanabilir ve uzun sürebilir.")
-    if st.button("Eğitimi Başlat", type="primary"):
+    confirmed = st.checkbox("Uzun süren eğitimi onaylıyorum")
+    if dry_run:
+        st.caption("Dry run açıkken gerçek eğitim başlatılamaz; dry-run butonunu kullanın.")
+    if st.button("Eğitimi Başlat", type="primary", disabled=dry_run or not confirmed):
         job = start_job(
             command,
             {
+                "stage": "baseline",
                 "dataset": dataset,
                 "model": model,
                 "config": selected_config,
@@ -239,12 +239,20 @@ with button_cols[1]:
         )
         st.success(f"Eğitim işi kuyruğa eklendi: {job['job_id']} | status={job['status']}")
 
-st.subheader("Aktif / Son İşler")
-jobs = list_jobs()
+render_notebook_download(
+    stage="baseline",
+    dataset=dataset,
+    model=model,
+    command=command,
+    key="baseline_notebook_download",
+)
+
+st.subheader("Aktif / Son Baseline İşleri")
+jobs = jobs_for_stage("baseline")
 if jobs:
     jobs_df = pd.DataFrame(jobs)
     display_cols = ["job_id", "dataset", "model", "status", "queued_time", "start_time", "process_id", "log_path"]
-    st.dataframe(jobs_df[[col for col in display_cols if col in jobs_df.columns]], use_container_width=True)
+    st.dataframe(jobs_df[[col for col in display_cols if col in jobs_df.columns]], width="stretch")
 
     selected_job = st.selectbox("Log görüntülenecek job", [job["job_id"] for job in jobs])
     selected = next(job for job in jobs if job["job_id"] == selected_job)

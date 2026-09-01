@@ -432,8 +432,9 @@ with buttons[0]:
         st.success(f"Dry-run kuyruğa eklendi: {job['job_id']}")
 with buttons[1]:
     st.warning("Birden fazla teacher GPU belleği ve eğitim süresini artırır.")
+    confirmed = st.checkbox("Uzun süren eğitimi onaylıyorum")
     if st.button(
-        "Multi-KD Eğitimini Başlat", type="primary", disabled=not valid
+        "Multi-KD Eğitimini Başlat", type="primary", disabled=not valid or not confirmed
     ):
         job = queue_job(resolved, dry_run=False)
         st.success(f"Eğitim kuyruğa eklendi: {job['job_id']}")

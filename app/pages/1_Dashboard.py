@@ -21,7 +21,9 @@ st.title("Dashboard")
 
 st.subheader("CUDA Durumu")
 try:
-    import torch
+    # The first import costs a couple of seconds; later reruns are instant.
+    with st.spinner("PyTorch yükleniyor..."):
+        import torch
 
     cuda_available = torch.cuda.is_available()
     cols = st.columns(3)
@@ -47,24 +49,27 @@ show_dataframe_or_warning(split_df, "splits klasöründe okunabilir split JSON b
 st.subheader("Son Baseline Sonuçları")
 baseline_df = load_baseline_results()
 if baseline_df is not None and not baseline_df.empty:
-    st.dataframe(baseline_df.tail(10), use_container_width=True)
+    st.dataframe(baseline_df.tail(10), width="stretch")
 else:
     st.info("results/baseline/baseline_results.csv henüz yok.")
 
 st.subheader("Son CNN Teacher Sonuçları")
 teacher_df = load_csv_if_exists("results/teachers/cnn/teacher_results.csv")
 if teacher_df is not None and not teacher_df.empty:
-    st.dataframe(teacher_df.tail(10), use_container_width=True)
+    st.dataframe(teacher_df.tail(10), width="stretch")
 else:
     st.info("results/teachers/cnn/teacher_results.csv henüz yok veya boş.")
 
 st.subheader("Son Vision Transformer Teacher Sonuçları")
 vit_df = load_csv_if_exists("results/teachers/vision_transformers/teacher_results.csv")
 if vit_df is not None and not vit_df.empty:
-    st.dataframe(vit_df.tail(10), use_container_width=True)
+    st.dataframe(vit_df.tail(10), width="stretch")
 else:
     st.info("results/teachers/vision_transformers/teacher_results.csv henüz yok veya boş.")
 
-st.subheader("MLflow UI")
-st.code("mlflow ui --host 127.0.0.1 --port 5000", language="powershell")
+st.subheader("MLflow")
 st.link_button("MLflow UI Aç", "http://127.0.0.1:5000")
+st.page_link(
+    "pages/7_MLflow_Helper.py",
+    label="Başlatma komutu ve kayıtlı deneyler için MLflow Helper'a git",
+)

@@ -297,7 +297,7 @@ metric_cols[4].metric("Epoch", epoch_label)
 if progress.get("progress_fraction") is not None:
     st.progress(float(progress["progress_fraction"]), text=f"Epoch progress: {epoch_label}")
 
-st.subheader("Job Control")
+st.subheader("Job Kontrolü")
 control_cols = st.columns([1, 3])
 with control_cols[0]:
     confirm_stop = st.checkbox("Durdurmayı onayla")
