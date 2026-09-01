@@ -103,6 +103,31 @@ def resolve_bundle_output(environment, mount, drive_root=Path('/content/drive'))
 """
 
 
+def _output_setup_source() -> str:
+    """Source that resolves BUNDLE_OUTPUT from scratch.
+
+    Emitted into every cell that needs the destination rather than shared
+    through the kernel: training runs unattended for hours and a Colab
+    reconnect in the meantime wipes the variable while leaving the earlier
+    cell's output on screen.
+    """
+    return _output_resolver_source() + """
+
+import os
+
+try:
+    from google.colab import drive as _colab_drive
+except ImportError:
+    def _mount(mountpoint):
+        raise RuntimeError('google.colab bu ortamda yok.')
+else:
+    _mount = _colab_drive.mount
+
+BUNDLE_OUTPUT, _output_message = resolve_bundle_output(os.environ, _mount)
+print(_output_message)
+"""
+
+
 def _dataset_setup(dataset: str) -> str:
     if dataset == "appleleaf9":
         return """from pathlib import Path
@@ -253,22 +278,23 @@ returncode = process.wait()
 if returncode:
     raise RuntimeError(f'Eğitim başarısız oldu. Exit code: {{returncode}}')
 """
-    output_setup = _output_resolver_source() + """
+    output_setup = _output_setup_source()
+    package = _output_setup_source() + f"""
+import subprocess, sys
 
-import os
-
-try:
-    from google.colab import drive as _colab_drive
-except ImportError:
-    def _mount(mountpoint):
-        raise RuntimeError('google.colab bu ortamda yok.')
-else:
-    _mount = _colab_drive.mount
-
-BUNDLE_OUTPUT, _output_message = resolve_bundle_output(os.environ, _mount)
-print(_output_message)
-"""
-    package = f"""import subprocess, sys
+if not Path('scripts/package_external_run.py').exists():
+    # A kernel restart loses the clone cell's chdir but keeps the disk.
+    for _candidate in (Path.cwd() / 'MasterThesis', Path('/content/MasterThesis')):
+        if (_candidate / 'scripts' / 'package_external_run.py').exists():
+            os.chdir(_candidate)
+            print('Calisma dizini geri yuklendi:', _candidate)
+            break
+    else:
+        raise RuntimeError(
+            'Repo bulunamadi. Colab calisma zamani geri donusturulmus olabilir; '
+            'bu durumda egitim ciktilari da silinmistir ve notebook bastan '
+            'calistirilmalidir.'
+        )
 subprocess.run([
     sys.executable, 'scripts/package_external_run.py',
     '--stage', {stage!r}, '--dataset', {dataset!r}, '--model', {model!r},

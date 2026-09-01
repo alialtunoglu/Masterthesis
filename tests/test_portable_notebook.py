@@ -1,7 +1,12 @@
+import ast
 import json
+import os
+import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from app import portable_notebook
 from app.portable_notebook import (
@@ -250,6 +255,74 @@ class NotebookOutputWiringTests(unittest.TestCase):
         self.assertIn("BUNDLE_OUTPUT", package)
         self.assertNotIn("'/content' if", package)
         self.assertNotIn("__import__('os')", package)
+
+    def test_package_cell_resolves_the_destination_itself(self):
+        """Training runs unattended for hours and Colab reconnects meanwhile.
+
+        Holding the destination only in kernel memory lost it to a NameError
+        after a real 14-epoch run, so the cell has to stand on its own.
+        """
+        cells = self._cells()
+        package = cells[_cell_index(cells, "package_external_run.py")]
+        tree = ast.parse(package)
+        assigned = {
+            target.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Assign)
+            for target in node.targets
+            if isinstance(target, ast.Name)
+        } | {
+            element.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Assign)
+            for target in node.targets
+            if isinstance(target, ast.Tuple)
+            for element in target.elts
+            if isinstance(element, ast.Name)
+        }
+        self.assertIn("BUNDLE_OUTPUT", assigned)
+
+    def test_package_cell_recovers_the_working_directory_after_a_restart(self):
+        """A kernel restart loses the chdir but leaves the clone on disk."""
+        cells = self._cells()
+        package = cells[_cell_index(cells, "package_external_run.py")]
+        calls: list[list[str]] = []
+        with tempfile.TemporaryDirectory() as directory:
+            clone = Path(directory) / "MasterThesis" / "scripts"
+            clone.mkdir(parents=True)
+            (clone / "package_external_run.py").write_text("", encoding="utf-8")
+            previous = os.getcwd()
+            os.chdir(directory)
+            try:
+                with mock.patch(
+                    "subprocess.run", lambda *a, **k: calls.append(list(a[0]))
+                ):
+                    exec(compile(package, "<package>", "exec"), {"__name__": "__main__"})
+                self.assertEqual(Path(os.getcwd()).name, "MasterThesis")
+            finally:
+                # Windows cannot remove the temp tree while it is the cwd.
+                os.chdir(previous)
+        self.assertEqual(len(calls), 1)
+
+    def test_package_cell_run_standalone_targets_drive(self):
+        cells = self._cells()
+        package = cells[_cell_index(cells, "package_external_run.py")]
+        calls: list[list[str]] = []
+        colab = types.ModuleType("google.colab")
+        colab.drive = types.SimpleNamespace(mount=lambda mountpoint: None)
+        google = types.ModuleType("google")
+        google.colab = colab
+
+        with mock.patch.dict(sys.modules, {"google": google, "google.colab": colab}), \
+                mock.patch.dict(os.environ, {"COLAB_RELEASE_TAG": "release"}), \
+                mock.patch.object(Path, "mkdir", lambda *a, **k: None), \
+                mock.patch("subprocess.run", lambda *a, **k: calls.append(list(a[0]))):
+            exec(compile(package, "<package>", "exec"), {"__name__": "__main__"})
+
+        self.assertEqual(len(calls), 1)
+        command = calls[0]
+        expected = str(Path("/content/drive") / "MyDrive" / "MasterThesis" / "bundles")
+        self.assertEqual(command[command.index("--output") + 1], expected)
 
     def test_drive_is_mounted_before_dataset_and_training_cells(self):
         cells = self._cells()
