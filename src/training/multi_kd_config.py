@@ -7,17 +7,24 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
+from .experiment_config import validate_dataset_selection
+try:
+    from models.model_catalog import STUDENT_MODELS, CNN_TEACHER_MODELS, VISION_TRANSFORMER_TEACHER_MODELS
+except ModuleNotFoundError:
+    from src.models.model_catalog import STUDENT_MODELS, CNN_TEACHER_MODELS, VISION_TRANSFORMER_TEACHER_MODELS
+
 from training.kd_config import (
     SUPPORTED_MONITORS,
     SUPPORTED_OPTIMIZERS,
     SUPPORTED_SCHEDULERS,
     TrainingConfig,
+    RecoveryConfig,
 )
 
 
 SUPPORTED_DATASET = "plantpathology2021"
 SUPPORTED_STUDENT = "mobilenet_v3_small"
-SUPPORTED_TEACHERS = frozenset({"resnet50", "densenet201", "regnet_y_8gf"})
+SUPPORTED_TEACHERS = frozenset(CNN_TEACHER_MODELS | VISION_TRANSFORMER_TEACHER_MODELS)
 SUPPORTED_KD_TYPES = frozenset({"logit_based", "feature_based", "relation_based"})
 SUPPORTED_AGGREGATIONS = frozenset({"uniform", "validation_weighted", "manual"})
 
@@ -28,23 +35,25 @@ class MultiExperimentConfig:
     kd_type: str = "logit_based"
     dataset_name: str = SUPPORTED_DATASET
     seed: int = 42
+    dataset_ref: dict | None = None
 
 
 @dataclass(frozen=True)
 class StudentConfig:
     model_name: str = SUPPORTED_STUDENT
-    feature_layer: str = "features.12"
+    feature_layer: str | None = None
 
 
 @dataclass(frozen=True)
 class TeacherConfig:
     model_name: str
-    feature_layer: str
+    feature_layer: str | None = None
     run_id: str | None = None
     checkpoint_path: str | None = None
     best_val_macro_f1: float | None = None
     manual_weight: float | None = None
     resolved_weight: float | None = None
+    checkpoint_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -68,6 +77,8 @@ class MultiKDConfig:
     teachers: tuple[TeacherConfig, ...]
     training: TrainingConfig
     distillation: MultiDistillationConfig
+    recovery: RecoveryConfig = field(default_factory=RecoveryConfig)
+    teacher_inputs: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -98,6 +109,8 @@ def load_multi_kd_config(source: str | Path | Mapping[str, Any]) -> MultiKDConfi
             teachers=teachers,
             training=TrainingConfig(**_mapping(payload, "training")),
             distillation=MultiDistillationConfig(**_mapping(payload, "distillation")),
+            recovery=RecoveryConfig(**payload.get("recovery", {})),
+            teacher_inputs=payload.get("teacher_inputs", []),
         )
     except (TypeError, AttributeError) as exc:
         raise ValueError(f"Invalid multi-teacher KD config field: {exc}") from exc
@@ -115,10 +128,9 @@ def validate_multi_kd_config(config: MultiKDConfig, *, runtime: bool = False) ->
     errors: list[str] = []
     if exp.stage != "multi_teacher_knowledge_distillation":
         errors.append("experiment.stage must be 'multi_teacher_knowledge_distillation'")
-    if exp.dataset_name != SUPPORTED_DATASET:
-        errors.append(f"dataset_name must be '{SUPPORTED_DATASET}'")
-    if student.model_name != SUPPORTED_STUDENT:
-        errors.append(f"student.model_name must be '{SUPPORTED_STUDENT}'")
+    validate_dataset_selection(exp.dataset_name, exp.dataset_ref)
+    if student.model_name not in STUDENT_MODELS:
+        errors.append("unsupported student model")
     if exp.kd_type not in SUPPORTED_KD_TYPES:
         errors.append(f"unsupported kd_type: {exp.kd_type}")
     if len(config.teachers) < 2:
@@ -179,6 +191,8 @@ def merge_multi_kd_config(
             payload[section].update(
                 {key: value for key, value in values.items() if value is not None}
             )
+    if "recovery" in overrides:
+        payload["recovery"].update(overrides["recovery"])
     if "teachers" in overrides:
         payload["teachers"] = overrides["teachers"]
     return load_multi_kd_config(payload)

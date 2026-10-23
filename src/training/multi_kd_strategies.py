@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from training.kd_features import ConvFeatureAdapter
+from training.kd_features import ConvFeatureAdapter, VectorFeatureAdapter, pooled_feature
 from training.multi_kd_config import MultiDistillationConfig
 
 
@@ -63,12 +63,16 @@ class MultiFeatureStrategy(MultiTeacherStrategy):
         weights,
         student_channels: int,
         teacher_channels: Sequence[int],
+        feature_modes: Sequence[str] | None = None,
     ):
         super().__init__(config, teacher_names, weights)
+        self.feature_modes = tuple(feature_modes or ["spatial"] * len(teacher_names))
+        if len(self.feature_modes) != len(teacher_names) or any(mode not in {"spatial", "pooled_vector"} for mode in self.feature_modes):
+            raise ValueError("A valid feature mode is required per teacher.")
         self.adapters = nn.ModuleDict(
             {
-                name: ConvFeatureAdapter(student_channels, channels)
-                for name, channels in zip(self.teacher_names, teacher_channels)
+                name: (ConvFeatureAdapter if mode == "spatial" else VectorFeatureAdapter)(student_channels, channels)
+                for name, channels, mode in zip(self.teacher_names, teacher_channels, self.feature_modes)
             }
         )
 
@@ -90,6 +94,8 @@ class MultiFeatureStrategy(MultiTeacherStrategy):
         ):
             aligned = self.adapters[name](student_features, feature)
             target = feature.detach()
+            if self.feature_modes[index] == "pooled_vector":
+                target = pooled_feature(target)
             if self.config.feature_loss == "mse":
                 loss = F.mse_loss(aligned, target)
             elif self.config.feature_loss == "l1":
@@ -166,6 +172,7 @@ def create_multi_teacher_strategy(
     *,
     student_channels: int | None = None,
     teacher_channels: Sequence[int] | None = None,
+    feature_modes: Sequence[str] | None = None,
 ) -> MultiTeacherStrategy:
     if kd_type == "logit_based":
         return MultiLogitStrategy(config, teacher_names, weights)
@@ -173,7 +180,7 @@ def create_multi_teacher_strategy(
         if student_channels is None or teacher_channels is None:
             raise ValueError("Feature channel dimensions are required.")
         return MultiFeatureStrategy(
-            config, teacher_names, weights, student_channels, teacher_channels
+            config, teacher_names, weights, student_channels, teacher_channels, feature_modes
         )
     if kd_type == "relation_based":
         return MultiRelationStrategy(config, teacher_names, weights)
@@ -191,7 +198,7 @@ def weighted_ensemble_probabilities(
 
 
 def _vectors(features: torch.Tensor, normalize: bool) -> torch.Tensor:
-    vectors = features.mean(dim=(-2, -1)) if features.ndim == 4 else features.flatten(1)
+    vectors = pooled_feature(features)
     return F.normalize(vectors, dim=1) if normalize else vectors
 
 

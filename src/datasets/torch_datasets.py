@@ -46,13 +46,22 @@ class SplitJsonImageDataset(Dataset):
         self.samples = metadata["splits"][split]
         self.classes = metadata["classes"]
         self.dataset_name = metadata["dataset_name"]
+        self.dataset_root = None
+        if metadata.get("identity_version") == 2:
+            from .dataset_registry import DatasetRef, resolve_dataset
+            config = resolve_dataset(self.project_root, DatasetRef(**metadata["dataset_ref"]))
+            self.dataset_root = self.project_root / config.path
 
     def __len__(self) -> int:
         return len(self.samples)
 
     def __getitem__(self, index: int):
         sample = self.samples[index]
-        image_path = self.project_root / sample["path"]
+        if self.dataset_root is not None:
+            from .dataset_registration import contained_path
+            image_path = contained_path(self.dataset_root, sample["relative_path"])
+        else:
+            image_path = self.project_root / sample["path"]
         if not image_path.exists():
             raise FileNotFoundError(f"Image file not found: {image_path}")
 

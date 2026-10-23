@@ -160,6 +160,7 @@ def fit(
     gradient_accumulation_steps: int = 1,
     mixed_precision: bool = False,
     gradient_clip_norm: float | None = None,
+    recovery=None,
 ) -> dict:
     """Train, select the best validation macro-F1 checkpoint, and test once."""
     if epochs <= 0:
@@ -177,7 +178,17 @@ def fit(
     if monitor_metric != "val_macro_f1":
         raise ValueError("Only monitor_metric='val_macro_f1' is supported for now.")
 
-    for epoch in range(1, epochs + 1):
+    saved = recovery.restore(model, optimizer, scheduler, scaler, None, train_loader, checkpoint_path) if recovery else {}
+    progress = saved.get("progress", {})
+    history = progress.get("history", history)
+    best_val_macro_f1 = progress.get("best_value", best_val_macro_f1)
+    best_epoch = progress.get("best_epoch", best_epoch)
+    best_val_metrics = progress.get("best_val_metrics", best_val_metrics)
+    epochs_without_improvement = progress.get("without_improvement", 0)
+    start_epoch = saved.get("epoch", 0) + 1
+    if early_stopping_patience and epochs_without_improvement >= early_stopping_patience:
+        start_epoch = epochs + 1
+    for epoch in range(start_epoch, epochs + 1):
         train_loss = train_one_epoch(
             model,
             train_loader,
@@ -245,6 +256,12 @@ def fit(
                 )
         else:
             epochs_without_improvement += 1
+
+        if recovery:
+            recovery.save(epoch, {"history": history, "best_value": best_val_macro_f1,
+                                 "best_epoch": best_epoch, "best_val_metrics": best_val_metrics,
+                                 "without_improvement": epochs_without_improvement},
+                          model, optimizer, scheduler, scaler, None, train_loader, checkpoint_path)
 
         if (
             early_stopping_patience is not None

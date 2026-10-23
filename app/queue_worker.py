@@ -11,8 +11,9 @@ from datetime import datetime
 from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
-if str(APP_DIR) not in sys.path:
-    sys.path.insert(0, str(APP_DIR))
+for path in (APP_DIR.parent, APP_DIR):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 from experiment_runner import (  # noqa: E402
     QUEUE_WORKER_HEARTBEAT_PATH,
@@ -34,6 +35,7 @@ def parse_args() -> argparse.Namespace:
 def write_heartbeat(status: str, message: str = "") -> None:
     QUEUE_WORKER_HEARTBEAT_PATH.parent.mkdir(parents=True, exist_ok=True)
     heartbeat = {
+        "process_id": os.getpid(),
         "status": status,
         "message": message,
         "timestamp": datetime.now().isoformat(timespec="seconds"),
@@ -91,6 +93,7 @@ def main() -> None:
         return
     print(f"Queue worker started. poll_seconds={poll_seconds}", flush=True)
     try:
+        write_heartbeat("running", "Queue worker ready.")
         while True:
             settings = load_dashboard_settings()
             jobs = list_jobs()
@@ -104,6 +107,10 @@ def main() -> None:
         write_heartbeat("stopped", "Stopped by KeyboardInterrupt")
         mark_state("stopped")
         print("Queue worker stopped.", flush=True)
+    except Exception as error:
+        write_heartbeat("failed", str(error))
+        mark_state("failed")
+        raise
 
 
 if __name__ == "__main__":

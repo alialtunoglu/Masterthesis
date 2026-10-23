@@ -1,0 +1,26 @@
+{
+  "training": {
+    "epochs": 30,
+    "batch_size": 32,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.0001,
+    "image_size": 224,
+    "early_stopping_patience": 7,
+    "monitor_metric": "val_macro_f1",
+    "optimizer": "adamw",
+    "scheduler": "cosine",
+    "student_pretrained": true,
+    "data_augmentation": true,
+    "num_workers": 4
+  },
+  "distillation": {
+    "temperature": 4,
+    "alpha": 0.5,
+    "feature_loss": "mse",
+    "feature_loss_weight": 1,
+    "distance_loss_weight": 1,
+    "angle_loss_weight": 2,
+    "feature_normalization": true,
+    "aggregation": "uniform"
+  }
+}

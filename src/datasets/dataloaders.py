@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import random
+import numpy as np
 
 import torch
 from torch.utils.data import DataLoader
@@ -16,6 +18,12 @@ except ImportError:
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
+
+
+def seed_worker(worker_id):
+    seed = torch.initial_seed() % (2**32)
+    random.seed(seed)
+    np.random.seed(seed)
 
 
 def build_train_transform(image_size: int, use_augmentation: bool = True):
@@ -58,22 +66,27 @@ def create_dataloaders(
     batch_size: int,
     num_workers: int,
     use_augmentation: bool = True,
+    recovery_seed: int | None = None,
+    project_root: Path | None = None,
 ):
     """Create train, validation, and test DataLoaders from a split file."""
     train_dataset = SplitJsonImageDataset(
         split_file=split_file,
         split="train",
         transform=build_train_transform(image_size, use_augmentation=use_augmentation),
+        **({"project_root": project_root} if project_root is not None else {}),
     )
     val_dataset = SplitJsonImageDataset(
         split_file=split_file,
         split="val",
         transform=build_eval_transform(image_size),
+        **({"project_root": project_root} if project_root is not None else {}),
     )
     test_dataset = SplitJsonImageDataset(
         split_file=split_file,
         split="test",
         transform=build_eval_transform(image_size),
+        **({"project_root": project_root} if project_root is not None else {}),
     )
 
     pin_memory = torch.cuda.is_available()
@@ -81,11 +94,19 @@ def create_dataloaders(
         "batch_size": batch_size,
         "num_workers": num_workers,
         "pin_memory": pin_memory,
-        "persistent_workers": num_workers > 0,
+        "persistent_workers": num_workers > 0 and recovery_seed is None,
     }
 
-    train_loader = DataLoader(train_dataset, shuffle=True, **common_kwargs)
-    val_loader = DataLoader(val_dataset, shuffle=False, **common_kwargs)
-    test_loader = DataLoader(test_dataset, shuffle=False, **common_kwargs)
+    if recovery_seed is not None:
+        common_kwargs["worker_init_fn"] = seed_worker
+    train_loader = DataLoader(train_dataset, shuffle=True,
+                              generator=torch.Generator().manual_seed(recovery_seed) if recovery_seed is not None else None,
+                              **common_kwargs)
+    val_loader = DataLoader(val_dataset, shuffle=False,
+                            generator=torch.Generator().manual_seed(recovery_seed + 1) if recovery_seed is not None else None,
+                            **common_kwargs)
+    test_loader = DataLoader(test_dataset, shuffle=False,
+                             generator=torch.Generator().manual_seed(recovery_seed + 2) if recovery_seed is not None else None,
+                             **common_kwargs)
 
     return train_loader, val_loader, test_loader, train_dataset.classes

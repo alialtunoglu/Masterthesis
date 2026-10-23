@@ -19,7 +19,9 @@ for path in (SRC_DIR, CURRENT_DIR):
         sys.path.insert(0, str(path))
 
 from datasets.dataloaders import create_dataloaders
-from datasets.dataset_registry import DATASETS, PROJECT_ROOT, SPLITS_DIR
+from datasets.dataset_registry import DATASETS, PROJECT_ROOT, SPLITS_DIR, get_dataset_catalog, DatasetRef
+from datasets.dataset_runtime import resolve_dataset_runtime, verify_dataset_content
+from training.experiment_config import resolve_experiment_config
 from evaluation.metrics import compute_per_class_metrics
 from evaluation.reports import save_confusion_matrix_artifacts, save_learning_curves
 from models.model_factory import (
@@ -29,6 +31,7 @@ from models.model_factory import (
     get_model_type,
 )
 from models.model_info import get_model_compute_dict, get_model_summary_dict
+from tracking.experiment_naming import build_unique_run_name
 from tracking.mlflow_tracker import (
     end_run,
     log_artifact,
@@ -39,8 +42,11 @@ from tracking.mlflow_tracker import (
     start_run,
 )
 from training.trainer import fit
-from utils.io import ensure_dir, load_json, save_json
+from utils.io import ensure_dir, load_json, save_json, upsert_result_row
+from tracking.experiment_taxonomy import enrich_experiment_metadata
 from utils.seed import set_seed
+from training.recovery import (add_recovery_arguments, create_recovery, recovery_settings,
+                               mark_recovery, TrainingStopped)
 
 
 TEACHER_MODELS = CNN_TEACHER_MODELS | VISION_TRANSFORMER_TEACHER_MODELS
@@ -80,6 +86,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
 }
 
 TEACHER_RESULT_COLUMNS = [
+    "training_method", "model_role", "architecture_family",
     "run_name",
     "mlflow_run_id",
     "stage",
@@ -136,7 +143,7 @@ TEACHER_RESULT_COLUMNS = [
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a teacher training experiment.")
     parser.add_argument("--config", default=None)
-    parser.add_argument("--dataset", choices=sorted(DATASETS.keys()), default=None)
+    parser.add_argument("--dataset", choices=sorted(get_dataset_catalog(PROJECT_ROOT)), default=None)
     parser.add_argument("--model", choices=sorted(TEACHER_MODELS), default=None)
     parser.add_argument("--epochs", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=None)
@@ -161,6 +168,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gradient-clip-norm", type=float, default=None)
     parser.add_argument("--warmup-epochs", type=int, default=None)
     parser.add_argument("--scheduler-eta-min", type=float, default=None)
+    add_recovery_arguments(parser)
     return parser.parse_args()
 
 
@@ -226,7 +234,7 @@ def build_final_config(args: argparse.Namespace) -> dict[str, Any]:
     config["optimizer"] = str(config.get("optimizer") or "adamw").lower()
     config["scheduler"] = str(config.get("scheduler") or "cosine").lower()
 
-    if config["dataset_name"] not in DATASETS:
+    if config["dataset_name"] not in get_dataset_catalog(PROJECT_ROOT) and not config.get("dataset_ref"):
         raise ValueError(f"Unsupported or missing dataset_name. Supported: {sorted(DATASETS)}")
     if config["model_name"] not in TEACHER_MODELS:
         raise ValueError(f"Unsupported teacher model. Supported: {sorted(TEACHER_MODELS)}")
@@ -252,7 +260,7 @@ def build_final_config(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("scheduler_eta_min cannot be negative.")
     if config["gradient_clip_norm"] is not None and float(config["gradient_clip_norm"]) <= 0:
         raise ValueError("gradient_clip_norm must be positive when provided.")
-    return config
+    return enrich_experiment_metadata(resolve_experiment_config(PROJECT_ROOT, config))
 
 
 def teacher_paths(config: dict[str, Any]) -> tuple[Path, Path, Path, str]:
@@ -343,6 +351,7 @@ def add_runtime_fields(config: dict[str, Any], split_file: Path, class_names, tr
             "confusion_matrix_csv_path": relative(paths["confusion_matrix_csv"]),
             "confusion_matrix_png_path": relative(paths["confusion_matrix_png"]),
             "learning_curves_path": relative(paths["learning_curves"]),
+            "run_metadata_path": relative(paths["run_dir"] / "run_metadata.json"),
         }
     )
     final_config.update(model_summary)
@@ -350,16 +359,7 @@ def add_runtime_fields(config: dict[str, Any], split_file: Path, class_names, tr
 
 
 def append_summary_row(row: dict[str, Any], output_path: Path) -> None:
-    ensure_dir(output_path.parent)
-    row_df = pd.DataFrame([row])
-    if output_path.exists() and output_path.stat().st_size > 0:
-        existing = pd.read_csv(output_path)
-        output = pd.concat([existing, row_df], ignore_index=True)
-    else:
-        output = row_df
-    extra_columns = [column for column in output.columns if column not in TEACHER_RESULT_COLUMNS]
-    output = output.reindex(columns=TEACHER_RESULT_COLUMNS + extra_columns)
-    output.to_csv(output_path, index=False)
+    upsert_result_row(row, output_path, TEACHER_RESULT_COLUMNS)
 
 
 def prefixed(prefix: str, metrics: dict[str, float]) -> dict[str, float]:
@@ -414,7 +414,10 @@ def main() -> None:
     ensure_dir(checkpoints_dir)
     os.environ.setdefault("TORCH_HOME", str((PROJECT_ROOT / "checkpoints" / "pretrained").resolve()))
 
-    split_file = resolve_split_file(config["dataset_name"])
+    dataset_runtime = resolve_dataset_runtime(PROJECT_ROOT, config.get("dataset_ref"), config["dataset_name"])
+    if config.get("dataset_ref"):
+        verify_dataset_content(PROJECT_ROOT, DatasetRef(**config["dataset_ref"]))
+    split_file = Path(dataset_runtime["split_file"])
     device = select_device(config["device"])
     train_loader, val_loader, test_loader, class_names = create_dataloaders(
         split_file=split_file,
@@ -422,13 +425,15 @@ def main() -> None:
         batch_size=int(config["batch_size"]),
         num_workers=int(config["num_workers"]),
         use_augmentation=bool(config["use_augmentation"]),
+        recovery_seed=int(config["seed"]) if recovery_settings(args, config)["enabled"] else None,
+        project_root=PROJECT_ROOT,
     )
 
     model = create_model(config["model_name"], len(class_names), bool(config["pretrained"])).to(device)
     model_summary = get_model_summary_dict(model)
     if config["teacher_family"] == "vision_transformer":
         model_summary.update(get_model_compute_dict(model, int(config["image_size"])))
-    run_name = build_run_name(config, device)
+    run_name = build_unique_run_name(config["stage"], int(config["seed"]), device.type, bool(config["dry_run"]))
     paths = build_artifact_paths(
         run_name,
         config["dataset_name"],
@@ -439,6 +444,7 @@ def main() -> None:
     ensure_dir(paths["run_dir"])
 
     final_config = add_runtime_fields(config, split_file, class_names, train_loader, val_loader, test_loader, device, model_summary, paths)
+    final_config.update({key: value for key, value in dataset_runtime.items() if key != "split_file" and value is not None})
     save_json(final_config, paths["config"])
 
     experiment_name = final_config["experiment_name"] or default_experiment_name
@@ -462,7 +468,10 @@ def main() -> None:
         flush=True,
     )
 
+    recovery = None
+    status = "FINISHED"
     try:
+        recovery = create_recovery(args, config, paths, split_file, PROJECT_ROOT, run.info.run_id)
         log_params(final_config)
         log_artifact(paths["config"])
         log_text("\n".join(class_names), "class_names.txt")
@@ -519,6 +528,7 @@ def main() -> None:
             max_val_batches=final_config["max_val_batches"],
             max_test_batches=final_config["max_test_batches"],
             checkpoint_metadata=final_config,
+            recovery=recovery,
             early_stopping_patience=int(final_config["early_stopping_patience"]),
             monitor_metric=str(final_config["monitor_metric"]),
             train_criterion=torch.nn.CrossEntropyLoss(
@@ -546,7 +556,14 @@ def main() -> None:
         )
         log_metrics(prefixed("best_val", best_val))
         log_metrics({"test_loss": training_output["test_loss"], **prefixed("test", test)})
-        append_summary_row(build_summary_row(final_config, run_name, run.info.run_id, training_output), paths["summary"])
+        summary_row = build_summary_row(final_config, run_name, run.info.run_id, training_output)
+        from datasets.dataset_registration import sha256_file
+        summary_row["checkpoint_sha256"] = sha256_file(paths["checkpoint"])
+        if summary_row.get("dataset_ref"):
+            summary_row["dataset_ref"] = json.dumps(summary_row["dataset_ref"], sort_keys=True)
+        summary_row.update({"training_time_seconds": recovery.elapsed_seconds(), "backup_time_seconds": recovery.backup_seconds})
+        log_metrics({key: summary_row[key] for key in ("training_time_seconds", "backup_time_seconds")})
+        append_summary_row(summary_row, paths["summary"])
 
         for artifact_key in ("history", "per_class_metrics", "confusion_matrix_csv", "confusion_matrix_png", "learning_curves", "summary", "checkpoint"):
             if paths[artifact_key].exists():
@@ -557,8 +574,20 @@ def main() -> None:
         print(f"Best val macro_f1: {best_val.get('macro_f1'):.4f}")
         print(f"Test macro_f1: {test.get('macro_f1'):.4f}")
         print(f"Checkpoint: {relative(paths['checkpoint'])}")
+    except TrainingStopped:
+        status = "KILLED"
+        print("TRAINING_STOPPED saved at epoch boundary", flush=True)
+    except BaseException:
+        status = "FAILED"
+        raise
     finally:
-        end_run()
+        mark_recovery(recovery, status)
+        try:
+            if (paths["run_dir"] / "run_metadata.json").is_file():
+                log_artifact(paths["run_dir"] / "run_metadata.json")
+        except Exception as error:
+            print(f"RUN_METADATA_LOG_WARNING {error}", flush=True)
+        end_run(status)
 
 
 if __name__ == "__main__":

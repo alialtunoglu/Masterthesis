@@ -28,30 +28,20 @@ def _home_link_order() -> list[str]:
 
 
 class NavigationOrderTests(unittest.TestCase):
-    def test_home_page_lists_every_page(self):
+    def test_sidebar_exposes_four_task_destinations(self):
         app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
         self.assertFalse(app.exception)
         linked = [
-            element.proto.page
-            for element in app.main
+            element.proto.label
+            for element in app.sidebar
             if getattr(element, "type", None) == "page_link"
         ]
-        self.assertEqual(len(linked), len(_sidebar_order()))
+        self.assertEqual(linked, ["Genel bakış", "Deneyler", "Sonuçlar", "Veri Setleri", "Ayarlar"])
 
-    def test_home_page_order_matches_the_sidebar_order(self):
-        """Two navigations disagreeing is worse than either order alone."""
+    def test_new_experiment_has_a_dedicated_primary_entry(self):
         app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
         self.assertFalse(app.exception)
-        linked = [
-            element.proto.page
-            for element in app.main
-            if getattr(element, "type", None) == "page_link"
-        ]
-        # st.page_link reports the page name without its numeric prefix.
-        expected = [
-            name.split("_", 1)[1].removesuffix(".py") for name in _sidebar_order()
-        ]
-        self.assertEqual(linked, expected)
+        self.assertIn("Yeni deney", [button.label for button in app.sidebar.button])
 
 
 class ExperimentNamingTests(unittest.TestCase):

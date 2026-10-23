@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 from datetime import datetime
 from pathlib import Path
@@ -67,6 +68,19 @@ def validate_project_root(project_root: Path) -> None:
             + ", ".join(missing)
             + f"\nResolved root: {project_root}"
         )
+
+
+def ensure_no_active_jobs(project_root: Path) -> None:
+    active = []
+    for path in (project_root / "runs/jobs").glob("*.json"):
+        try:
+            job = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if job.get("status") in {"queued", "running", "stop_requested"}:
+            active.append(str(job.get("job_id") or path.stem))
+    if active:
+        raise RuntimeError("Reset blocked by active jobs: " + ", ".join(sorted(active)))
 
 
 def parse_args() -> argparse.Namespace:
@@ -180,6 +194,7 @@ def main() -> None:
     args = parse_args()
     project_root = find_project_root()
     validate_project_root(project_root)
+    ensure_no_active_jobs(project_root)
 
     existing_paths = existing_output_paths(project_root)
     missing_paths = [relative for relative in OUTPUT_PATHS if not (project_root / relative).exists()]

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import streamlit as st
+from app.portable_inputs import portable_inputs_source as _portable_inputs_source
 
 
 @dataclass(frozen=True)
@@ -36,20 +37,26 @@ def repository_export_status(root: Path) -> RepositoryExportStatus:
         pending_changes = _git(root, "status", "--porcelain")
     except (subprocess.SubprocessError, OSError):
         return RepositoryExportStatus(False, "Git deposu okunamadı; repository durumu doğrulanamıyor.")
-    if pending_changes:
-        return RepositoryExportStatus(False, "Notebook export için çalışma ağacı temiz olmalı.")
     try:
         with urllib.request.urlopen(repository_url.removesuffix(".git"), timeout=5) as response:
             if response.status != 200:
                 raise OSError
-        commit = _git(root, "rev-parse", "HEAD")
+        local_commit = _git(root, "rev-parse", "HEAD")
         branch = _git(root, "branch", "--show-current")
-        remote = _git(root, "ls-remote", "--heads", "origin", branch).split()
+        remote = _git(root, "ls-remote", "--heads", "origin", branch).split() if branch else []
+        if not remote:
+            remote = _git(root, "ls-remote", "origin", "HEAD").split()
     except (subprocess.SubprocessError, OSError):
         return RepositoryExportStatus(False, "origin erişilebilir ve public olmalı.")
-    if not branch or not remote or remote[0] != commit:
-        return RepositoryExportStatus(False, "Yerel HEAD önce origin üzerindeki aktif branch'e push edilmeli.")
-    return RepositoryExportStatus(True, "Notebook export hazır.", repository_url, commit)
+    if not remote:
+        return RepositoryExportStatus(False, "origin üzerinde indirilebilir bir commit bulunamadı.")
+    commit = remote[0]
+    if pending_changes or local_commit != commit:
+        message = ("Notebook indirilebilir; GitHub'daki commit kullanılır, yerel değişiklikler dahil değildir. "
+                   "Seçilen ayarlar yayımlanmış kodla uyumsuz olabilir.")
+    else:
+        message = "Notebook export hazır."
+    return RepositoryExportStatus(True, message, repository_url, commit)
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -244,19 +251,56 @@ def build_portable_notebook(
     dataset: str,
     model: str,
     command: list[str],
+    resume_from: str | None = None,
+    require_drive_backup: bool = True,
+    allow_volatile_fallback: bool = False,
+    dataset_package: dict | None = None,
+    teacher_inputs: list[dict] | None = None,
+    runtime_config: dict | None = None,
 ) -> bytes:
     run_command = ["python", *command[1:]]
+    portable_setup = None
+    if runtime_config is not None:
+        portable_setup = _portable_inputs_source(dataset_package, teacher_inputs or [], runtime_config)
+        for flag in ("--teacher-run-id", "--teacher-checkpoint"):
+            if flag in run_command:
+                index = run_command.index(flag)
+                del run_command[index:index + 2]
+        if "--config" in run_command:
+            run_command[run_command.index("--config") + 1] = "runs/configs/portable.json"
+        else:
+            run_command += ["--config", "runs/configs/portable.json"]
     clone = f"""import os, subprocess, sys
 subprocess.run(['git', 'clone', {repository_url!r}, 'MasterThesis'], check=True)
 os.chdir('MasterThesis')
 subprocess.run(['git', 'checkout', {source_commit!r}], check=True)
 subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', '-e', '.'], check=True)
 """
+    recovery_settings = f"""# Recovery settings (edit before training if needed)
+RECOVERY_RESUME_FROM = {resume_from!r}
+REQUIRE_DRIVE_RECOVERY = {require_drive_backup!r}
+ALLOW_VOLATILE_RECOVERY_FALLBACK = {allow_volatile_fallback!r}
+"""
     train = f"""from pathlib import Path
 import os, subprocess, sys
 command = {run_command!r}
 command[0] = sys.executable
 environment = os.environ.copy()
+resume_from = RECOVERY_RESUME_FROM
+require_drive_backup = REQUIRE_DRIVE_RECOVERY
+allow_volatile_fallback = ALLOW_VOLATILE_RECOVERY_FALLBACK
+is_colab = 'COLAB_RELEASE_TAG' in environment
+volatile_colab = is_colab and Path(BUNDLE_OUTPUT) == Path('/content')
+if volatile_colab and require_drive_backup and not allow_volatile_fallback:
+    raise RuntimeError('Drive recovery backup is required but Google Drive is unavailable. Explicitly enable volatile fallback to continue.')
+if Path(BUNDLE_OUTPUT).name == 'bundles':
+    recovery_output = Path(BUNDLE_OUTPUT).parent / 'recovery'
+else:
+    recovery_output = Path(BUNDLE_OUTPUT) / 'recovery'
+recovery_output.mkdir(parents=True, exist_ok=True)
+environment['MASTERTHESIS_BACKUP_DIR'] = str(recovery_output.resolve())
+if resume_from:
+    environment['MASTERTHESIS_RESUME_FROM'] = resume_from
 project_src = str(Path('src').resolve())
 existing_pythonpath = environment.get('PYTHONPATH')
 environment['PYTHONPATH'] = (
@@ -304,7 +348,7 @@ print('Bundle dizini:', BUNDLE_OUTPUT)
 """
     notebook = {
         "cells": [
-            _cell("markdown", f"# {dataset} · {model}\nGenerated from commit `{source_commit}`."),
+            _cell("markdown", f"# {dataset} · {model}\nGenerated from published commit `{source_commit}`. Local uncommitted changes are not included."),
             _cell("code", clone),
             _cell(
                 "markdown",
@@ -321,7 +365,9 @@ print('Bundle dizini:', BUNDLE_OUTPUT)
                 "## Dataset preparation\nKaggle bağlı input varsa doğrudan kullanılır; "
                 "indirme gerekirse Colab güvenli biçimde `kaggle.json` yüklemenizi ister.",
             ),
-            _cell("code", _dataset_setup(dataset)),
+            _cell("code", (_dataset_setup(dataset) if dataset_package is None else "# Custom data: no automatic download; use DATASET_MOUNT below.\n") + (portable_setup or "")),
+            _cell("markdown", "## Recovery settings\nResume is optional. Colab Drive backup is required by default; volatile fallback must be explicitly enabled."),
+            _cell("code", recovery_settings),
             _cell("markdown", "## Training"),
             _cell("code", train),
             _cell("markdown", "## Export result bundle\nZIP ve checkpoint ayrı oluşturulur."),
@@ -339,9 +385,11 @@ print('Bundle dizini:', BUNDLE_OUTPUT)
 
 
 def render_notebook_download(
-    *, stage: str, dataset: str, model: str, command: list[str], key: str
+    *, stage: str, dataset: str, model: str, command: list[str], key: str,
+    dataset_package: dict | None = None, teacher_inputs: list[dict] | None = None,
+    runtime_config: dict | None = None,
 ) -> None:
-    """Render a guarded Streamlit notebook download control."""
+    """Download a reproducible notebook from the available published commit."""
     root = Path(__file__).resolve().parents[1]
     status = cached_export_status(root)
     if "--dry-run" in command:
@@ -361,6 +409,7 @@ def render_notebook_download(
             dataset=dataset,
             model=model,
             command=command,
+            dataset_package=dataset_package, teacher_inputs=teacher_inputs, runtime_config=runtime_config,
         )
     st.download_button(
         "Portable .ipynb indir",

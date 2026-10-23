@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from training.kd_config import DistillationConfig
-from training.kd_features import ConvFeatureAdapter
+from training.kd_features import ConvFeatureAdapter, VectorFeatureAdapter, pooled_feature
 
 
 @dataclass
@@ -56,10 +56,14 @@ class FeatureDistillationStrategy(nn.Module):
         config: DistillationConfig,
         student_channels: int,
         teacher_channels: int,
+        feature_mode: str = "spatial",
     ) -> None:
         super().__init__()
         self.config = config
-        self.adapter = ConvFeatureAdapter(student_channels, teacher_channels)
+        if feature_mode not in {"spatial", "pooled_vector"}:
+            raise ValueError("Unsupported feature adapter mode.")
+        self.feature_mode = feature_mode
+        self.adapter = (ConvFeatureAdapter if feature_mode == "spatial" else VectorFeatureAdapter)(student_channels, teacher_channels)
 
     def compute(
         self,
@@ -74,6 +78,8 @@ class FeatureDistillationStrategy(nn.Module):
         ce = F.cross_entropy(student_logits, targets)
         aligned = self.adapter(student_features, teacher_features)
         teacher_features = teacher_features.detach()
+        if self.feature_mode == "pooled_vector":
+            teacher_features = pooled_feature(teacher_features)
         if self.config.feature_loss == "mse":
             feature = F.mse_loss(aligned, teacher_features)
         elif self.config.feature_loss == "l1":
@@ -131,20 +137,21 @@ def create_distillation_strategy(
     *,
     student_channels: int | None = None,
     teacher_channels: int | None = None,
+    feature_mode: str = "spatial",
 ) -> nn.Module:
     if kd_type == "logit_based":
         return LogitDistillationStrategy(config)
     if kd_type == "feature_based":
         if student_channels is None or teacher_channels is None:
             raise ValueError("Feature channel dimensions are required for feature-based KD.")
-        return FeatureDistillationStrategy(config, student_channels, teacher_channels)
+        return FeatureDistillationStrategy(config, student_channels, teacher_channels, feature_mode)
     if kd_type == "relation_based":
         return RelationDistillationStrategy(config)
     raise ValueError(f"Unsupported KD type: {kd_type}")
 
 
 def _feature_vectors(features: torch.Tensor, normalize: bool) -> torch.Tensor:
-    vectors = features.mean(dim=(-2, -1)) if features.ndim == 4 else features.flatten(1)
+    vectors = pooled_feature(features)
     return F.normalize(vectors, dim=1) if normalize else vectors
 
 

@@ -20,6 +20,8 @@ SUMMARY_PATHS = {
     "baseline": "results/baseline/baseline_results.csv",
     "teacher_cnn": "results/teachers/cnn/teacher_results.csv",
     "teacher_vision_transformer": "results/teachers/vision_transformers/teacher_results.csv",
+    "knowledge_distillation": "results/knowledge_distillation/kd_results.csv",
+    "multi_teacher_knowledge_distillation": "results/multi_teacher_knowledge_distillation/multi_kd_results.csv",
 }
 
 
@@ -33,9 +35,10 @@ def main() -> None:
     args = parser.parse_args()
 
     frame = pd.read_csv(ROOT / SUMMARY_PATHS[args.stage])
+    model_column = "student_model_name" if "student_model_name" in frame.columns else "model_name"
     matches = frame[
         (frame["dataset_name"].astype(str) == args.dataset)
-        & (frame["model_name"].astype(str) == args.model)
+        & (frame[model_column].astype(str) == args.model)
     ]
     if matches.empty:
         raise SystemExit("No completed matching result row was found.")

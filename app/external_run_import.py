@@ -13,9 +13,11 @@ from pathlib import Path, PurePosixPath
 from typing import Callable
 
 import pandas as pd
+from src.tracking.experiment_taxonomy import enrich_experiment_metadata
+from src.models.model_catalog import STUDENT_MODELS
 
 
-ACCEPTED_STAGES = {"baseline", "teacher_cnn", "teacher_vision_transformer"}
+ACCEPTED_STAGES = {"baseline", "teacher_cnn", "teacher_vision_transformer", "knowledge_distillation", "multi_teacher_knowledge_distillation"}
 # Imported runs must land in the same experiments local training writes to.
 # Kept literal so this module stays free of src/ imports; the pairing with
 # src.tracking.mlflow_tracker.DEFAULT_EXPERIMENT_NAME is asserted in the tests.
@@ -23,10 +25,12 @@ EXPERIMENT_NAMES = {
     "baseline": "MasterThesis-Baseline",
     "teacher_cnn": "MasterThesis-CNN-Teachers",
     "teacher_vision_transformer": "MasterThesis-Vision-Transformer-Teachers",
+    "knowledge_distillation": "MasterThesis-Knowledge-Distillation",
+    "multi_teacher_knowledge_distillation": "MasterThesis-Multi-Teacher-Knowledge-Distillation",
 }
 DATASETS = {"appleleaf9", "plantvillage", "plantpathology2021"}
 MODELS = {
-    "baseline": {"mobilenet_v3_small", "mobilenet_v3_large", "efficientnet_b0", "resnet18"},
+    "baseline": set(STUDENT_MODELS),
     "teacher_cnn": {
         "resnet50", "resnet101", "densenet121", "densenet201", "vgg19_bn",
         "efficientnet_b3", "efficientnet_b4", "convnext_tiny", "convnext_base", "regnet_y_8gf",
@@ -48,6 +52,11 @@ CHECKPOINT_PREFIXES = {
     "teacher_cnn": "checkpoints/teachers/cnn/",
     "teacher_vision_transformer": "checkpoints/teachers/vision_transformers/",
 }
+for _stage, _filename in (("knowledge_distillation", "kd_results.csv"), ("multi_teacher_knowledge_distillation", "multi_kd_results.csv")):
+    MODELS[_stage] = MODELS["baseline"]
+    SUMMARY_PATHS[_stage] = f"results/{_stage}/{_filename}"
+    RESULT_PREFIXES[_stage] = f"results/{_stage}/"
+    CHECKPOINT_PREFIXES[_stage] = f"checkpoints/{_stage}/"
 MAX_FILES = 100
 MAX_PAYLOAD_BYTES = 150 * 1024 * 1024
 MAX_CHECKPOINT_BYTES = 3 * 1024 * 1024 * 1024
@@ -67,7 +76,7 @@ def _sha256(path: Path) -> str:
 
 def _safe_relative(value: str) -> Path:
     posix = PurePosixPath(value)
-    if not value or "\\" in value or posix.is_absolute() or ".." in posix.parts:
+    if not value or ":" in value or "\\" in value or posix.is_absolute() or ".." in posix.parts:
         raise ExternalRunImportError(f"Unsafe bundle path: {value}")
     return Path(*posix.parts)
 
@@ -76,6 +85,48 @@ def _validate_zip_info(info: zipfile.ZipInfo) -> None:
     if info.is_dir() or (info.external_attr >> 16) & 0o170000 == 0o120000:
         raise ExternalRunImportError(f"Directories and symlinks are not allowed: {info.filename}")
     _safe_relative(info.filename)
+
+
+def _destination(root: Path, value: str) -> Path:
+    path = root / _safe_relative(value)
+    if not path.resolve().is_relative_to(root.resolve()) or any(parent.is_symlink() for parent in (path, *path.parents) if parent != root and parent.is_relative_to(root)):
+        raise ExternalRunImportError(f"Bundle target escapes project or follows a link: {value}")
+    return path
+
+
+def _validate_v2_artifacts(bundle_dir, manifest):
+    row, ref = manifest["result_row"], manifest.get("dataset_ref")
+    expected_classes = manifest["split_metadata"]["classes"]
+    records = {item["target"]: item for item in manifest["files"]}
+    paths = [row.get("config_path"), row.get("run_metadata_path")]
+    if not row.get("config_path") or row["config_path"] not in records:
+        raise ExternalRunImportError("A v2 bundle requires its runtime config artifact.")
+    with zipfile.ZipFile(next(bundle_dir.glob("*.zip"))) as archive:
+        for path in paths:
+            if not path or path not in records:
+                continue
+            item = records[path]
+            raw = archive.read(item["member"])
+            if len(raw) != item["size"] or hashlib.sha256(raw).hexdigest() != item["sha256"]:
+                raise ExternalRunImportError("V2 metadata artifact hash mismatch.")
+            payload = json.loads(raw)
+            config = payload.get("config", payload)
+            exp = config.get("experiment", config)
+            actual_ref = payload.get("dataset_ref") or exp.get("dataset_ref")
+            classes = payload.get("classes") or payload.get("class_names") or config.get("class_names")
+            model = exp.get("student_model_name") or exp.get("model_name") or config.get("student", {}).get("model_name")
+            if actual_ref != ref or classes != expected_classes or model != manifest["model"] or exp.get("dataset_name") != manifest["dataset"]:
+                raise ExternalRunImportError("V2 artifact dataset/model/class identity differs from manifest.")
+            if exp.get("stage") and exp["stage"] != manifest["stage"]:
+                raise ExternalRunImportError("V2 artifact stage mismatch.")
+            if manifest["stage"] == "knowledge_distillation":
+                if exp.get("teacher_model_name") != row.get("teacher_model_name") or exp.get("teacher_run_id") != row.get("teacher_run_id"):
+                    raise ExternalRunImportError("V2 teacher source identity mismatch.")
+            elif manifest["stage"] == "multi_teacher_knowledge_distillation":
+                names = json.loads(row["teacher_models"]) if isinstance(row.get("teacher_models"), str) else row.get("teacher_models", [])
+                ids = json.loads(row["teacher_run_ids"]) if isinstance(row.get("teacher_run_ids"), str) else row.get("teacher_run_ids", [])
+                if sorted(zip(names, ids)) != sorted((teacher["model_name"], teacher["run_id"]) for teacher in config.get("teachers", [])):
+                    raise ExternalRunImportError("V2 teacher list identity mismatch.")
 
 
 def _read_manifest(archive: Path) -> tuple[dict, list[zipfile.ZipInfo]]:
@@ -103,7 +154,7 @@ def _read_manifest(archive: Path) -> tuple[dict, list[zipfile.ZipInfo]]:
 
 
 def _validate_manifest(root: Path, bundle_dir: Path, manifest: dict) -> None:
-    if manifest.get("schema_version") != 1:
+    if manifest.get("schema_version") not in {1, 2}:
         raise ExternalRunImportError("Unsupported bundle schema version.")
     bundle_id = str(manifest.get("bundle_id", ""))
     if not re.fullmatch(r"[0-9a-f]{32}", bundle_id) or bundle_dir.name != bundle_id:
@@ -114,9 +165,9 @@ def _validate_manifest(root: Path, bundle_dir: Path, manifest: dict) -> None:
     row = manifest.get("result_row") or {}
     if row.get("stage") != stage:
         raise ExternalRunImportError("Manifest and result stage do not match.")
-    if row.get("dataset_name") != manifest.get("dataset") or row.get("model_name") != manifest.get("model"):
+    if row.get("dataset_name") != manifest.get("dataset") or (row.get("model_name") or row.get("student_model_name")) != manifest.get("model"):
         raise ExternalRunImportError("Manifest and result identity do not match.")
-    if manifest.get("dataset") not in DATASETS or manifest.get("model") not in MODELS[stage]:
+    if (manifest.get("schema_version") == 1 and manifest.get("dataset") not in DATASETS) or manifest.get("model") not in MODELS[stage]:
         raise ExternalRunImportError("Unsupported dataset/model identity.")
     if not manifest.get("run_name") or not re.fullmatch(
         r"[0-9a-f]{40}", str(manifest.get("source_commit", ""))
@@ -130,6 +181,62 @@ def _validate_manifest(root: Path, bundle_dir: Path, manifest: dict) -> None:
     ).hexdigest()
     if supplied != actual:
         raise ExternalRunImportError("Manifest fingerprint mismatch.")
+    records = {item["target"] for item in manifest.get("files", [])}
+    artifact_columns = {"config_path", "history_path", "per_class_metrics_path", "confusion_matrix_csv_path", "confusion_matrix_png_path", "learning_curves_path", "run_metadata_path"}
+    if any(row.get(key) and row[key] not in records for key in artifact_columns):
+        raise ExternalRunImportError("Result artifact pointer is not in the bundle.")
+    run_dir = row.get("run_dir")
+    if not run_dir and records:
+        parents = {_safe_relative(target).parent.as_posix() for target in records}
+        if len(parents) == 1:
+            run_dir = parents.pop()
+    if run_dir:
+        from src.tracking.artifact_paths import validate_run_directory
+        try:
+            validate_run_directory(run_dir, row, strict=manifest["schema_version"] == 2)
+        except ValueError as error:
+            raise ExternalRunImportError(str(error)) from error
+        directory = _safe_relative(str(run_dir))
+        if not records or not any(_safe_relative(target).parent == directory for target in records) or any(not _safe_relative(target).is_relative_to(directory) for target in records):
+            raise ExternalRunImportError("Run directory is broader than the bundled artifacts.")
+        if not str(run_dir).startswith(RESULT_PREFIXES[stage]) or "runs" not in directory.parts or directory.name == "runs":
+            raise ExternalRunImportError("Run directory is not a single stage run.")
+        existing = _destination(root, str(run_dir))
+        if existing.is_dir() and any(path.is_file() and path.relative_to(root).as_posix() not in records for path in existing.rglob("*")):
+            raise ExternalRunImportError("Existing run directory contains unrelated artifacts.")
+    if manifest.get("checkpoint") and row.get("checkpoint_path") != manifest["checkpoint"]["target"]:
+        raise ExternalRunImportError("Result checkpoint pointer differs from the bundle.")
+    if manifest["schema_version"] == 2:
+        try:
+            ref = manifest.get("dataset_ref")
+            if ref:
+                from src.datasets.dataset_runtime import validate_dataset_package
+                from src.training.experiment_config import validate_dataset_selection
+                validate_dataset_selection(manifest["dataset"], ref)
+                validate_dataset_package(manifest["dataset_package"], ref)
+                row_ref = row.get("dataset_ref")
+                if isinstance(row_ref, str):
+                    row_ref = json.loads(row_ref)
+                if row_ref != ref:
+                    raise ValueError("Result dataset reference mismatch")
+            elif manifest["dataset"] not in DATASETS:
+                raise ValueError("Custom results require a pinned dataset reference")
+            split = manifest["split"]
+            metadata = manifest["split_metadata"]
+            if not split or not metadata or metadata["classes"] != split["class_names"]:
+                raise ValueError("Missing portable split/class metadata")
+            if ref and metadata != manifest["dataset_package"]["split"]:
+                raise ValueError("Portable split metadata differs")
+            fingerprint = hashlib.sha256(json.dumps(metadata["classes"], ensure_ascii=False).encode()).hexdigest()
+            if fingerprint != split["class_mapping_fingerprint"]:
+                raise ValueError("Portable class fingerprint mismatch")
+            local_split = _destination(root, split["target"])
+            if local_split.is_file() and _sha256(local_split) != split["sha256"]:
+                raise ValueError("Local split differs from portable split")
+            _validate_v2_artifacts(bundle_dir, manifest)
+        except (KeyError, TypeError, ValueError) as error:
+            raise ExternalRunImportError(f"Invalid v2 provenance: {error}") from error
+        return
     split = manifest.get("split")
     if not split:
         raise ExternalRunImportError("A deterministic split fingerprint is required.")
@@ -225,7 +332,7 @@ def import_external_bundle(
                 target_value = str(item.get("target", ""))
                 if not target_value.startswith(RESULT_PREFIXES[stage]):
                     raise ExternalRunImportError(f"Artifact target is outside stage results: {target_value}")
-                target = root / _safe_relative(target_value)
+                target = _destination(root, target_value)
                 if target.exists():
                     if not target.is_file() or _sha256(target) != item.get("sha256"):
                         raise ExternalRunImportError(f"Artifact target collision: {target_value}")
@@ -254,7 +361,7 @@ def import_external_bundle(
                 raise ExternalRunImportError("Checkpoint is missing or too large.")
             if _sha256(source) != checkpoint.get("sha256"):
                 raise ExternalRunImportError("Checkpoint hash mismatch.")
-            target = root / _safe_relative(target_value)
+            target = _destination(root, target_value)
             if target.exists() and _sha256(target) != checkpoint.get("sha256"):
                 raise ExternalRunImportError(f"Checkpoint target collision: {target_value}")
             if not target.exists():
@@ -265,9 +372,12 @@ def import_external_bundle(
 
         local_run_id = register_run(manifest, imported_paths)
         row = dict(manifest["result_row"])
+        if not checkpoint:
+            row["checkpoint_path"] = None
         row["source_mlflow_run_id"] = manifest.get("source_mlflow_run_id")
         row["mlflow_run_id"] = local_run_id
         row["execution_origin"] = "external"
+        row = enrich_experiment_metadata(row)
         row["external_bundle_id"] = manifest["bundle_id"]
         row["import_receipt_path"] = receipt_path.relative_to(root).as_posix()
         row["external_bundle_dir"] = bundle_dir.relative_to(root).as_posix()
@@ -282,6 +392,9 @@ def import_external_bundle(
             "dataset": manifest["dataset"],
             "model": manifest["model"],
             "checkpoint_available": bool(checkpoint),
+            "source_mlflow_run_id": manifest.get("source_mlflow_run_id"),
+            "source_commit": manifest.get("source_commit"),
+            "run_metadata_path": row.get("run_metadata_path"),
         }
         receipt_path.parent.mkdir(parents=True, exist_ok=True)
         receipt_path.write_text(json.dumps(receipt, indent=2), encoding="utf-8")

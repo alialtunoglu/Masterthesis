@@ -42,7 +42,7 @@ class KDConfigTests(unittest.TestCase):
             / "configs/knowledge_distillation/plantpathology2021/logit_based/"
             "mobilenet_v3_small__resnet50.json"
         ).to_dict()
-        config["experiment"]["dataset_name"] = "plantvillage"
+        config["experiment"]["dataset_name"] = "unregistered_dataset"
         with self.assertRaisesRegex(ValueError, "dataset_name"):
             load_kd_config(config)
 

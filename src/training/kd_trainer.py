@@ -127,6 +127,7 @@ def fit_kd(
     student_capture: FeatureCapture | None = None,
     teacher_capture: FeatureCapture | None = None,
     logger: MetricLogger | None = None,
+    recovery=None,
 ) -> dict:
     freeze_teacher(teacher)
     train_config = config.training
@@ -136,7 +137,17 @@ def fit_kd(
     history: list[dict[str, float | int]] = []
     without_improvement = 0
 
-    for epoch in range(1, train_config.epochs + 1):
+    saved = recovery.restore(student, optimizer, scheduler, None, strategy, train_loader, checkpoint_path) if recovery else {}
+    progress = saved.get("progress", {})
+    history = progress.get("history", history)
+    best_value = progress.get("best_value", best_value)
+    best_epoch = progress.get("best_epoch", best_epoch)
+    best_val_metrics = progress.get("best_val_metrics", best_val_metrics)
+    without_improvement = progress.get("without_improvement", 0)
+    start_epoch = saved.get("epoch", 0) + 1
+    if without_improvement >= train_config.early_stopping_patience:
+        start_epoch = train_config.epochs + 1
+    for epoch in range(start_epoch, train_config.epochs + 1):
         train_metrics = train_kd_epoch(
             student,
             teacher,
@@ -183,6 +194,11 @@ def fit_kd(
         else:
             without_improvement += 1
         step_scheduler(scheduler, monitored)
+        if recovery:
+            recovery.save(epoch, {"history": history, "best_value": best_value,
+                                 "best_epoch": best_epoch, "best_val_metrics": best_val_metrics,
+                                 "without_improvement": without_improvement},
+                          student, optimizer, scheduler, None, strategy, train_loader, checkpoint_path)
         if without_improvement >= train_config.early_stopping_patience:
             print(
                 f"EARLY_STOPPING epoch={epoch}/{train_config.epochs} best_epoch={best_epoch}",
@@ -214,6 +230,7 @@ def _save_kd_checkpoint(path, student, strategy, epoch, class_names, config) -> 
             "epoch": epoch,
             "student_state_dict": student.state_dict(),
             "strategy_state_dict": strategy.state_dict(),
+            "feature_representation": getattr(strategy, "feature_mode", None),
             "class_names": class_names,
             "config": config.to_dict(),
         },

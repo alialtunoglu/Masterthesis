@@ -60,6 +60,41 @@ def _notebook_source(payload: bytes) -> str:
 
 
 class PortableNotebookTests(unittest.TestCase):
+    def test_uncommitted_unpushed_work_still_exports_published_commit(self):
+        published = "a" * 40
+        def git_result(_root, *args):
+            values = {
+                ("remote", "get-url", "origin"): "https://github.com/example/project.git",
+                ("status", "--porcelain"): " M app/portable_notebook.py",
+                ("rev-parse", "HEAD"): "b" * 40,
+                ("branch", "--show-current"): "codex/local-work",
+                ("ls-remote", "--heads", "origin", "codex/local-work"): "",
+                ("ls-remote", "origin", "HEAD"): f"{published}\tHEAD",
+            }
+            return values[args]
+
+        with mock.patch.object(portable_notebook, "_git", side_effect=git_result), mock.patch.object(
+            portable_notebook.urllib.request, "urlopen"
+        ) as open_url:
+            open_url.return_value.__enter__.return_value.status = 200
+            status = repository_export_status(Path("."))
+
+        self.assertTrue(status.ready)
+        self.assertEqual(status.commit, published)
+        self.assertIn("yerel", status.message.lower())
+        self.assertIn("dahil", status.message.lower())
+
+    def test_training_exports_recovery_environment_and_optional_resume(self):
+        source = _notebook_source(build_portable_notebook(
+            repository_url="https://github.com/example/project.git", source_commit="abc",
+            stage="teacher_cnn", dataset="appleleaf9", model="resnet50",
+            command=["python", "src/training/train_teacher.py", "--config", "config.json"],
+            resume_from="/content/drive/MyDrive/MasterThesis/recovery/e/a/epoch-000001",
+        ))
+        self.assertIn("MASTERTHESIS_BACKUP_DIR", source)
+        self.assertIn("MASTERTHESIS_RESUME_FROM", source)
+        self.assertIn("Drive recovery backup is required", source)
+
     def test_notebook_is_valid_and_uses_existing_cli(self):
         payload = build_portable_notebook(
             repository_url="https://github.com/example/project.git",

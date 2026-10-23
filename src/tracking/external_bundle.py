@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 
-ACCEPTED_STAGES = {"baseline", "teacher_cnn", "teacher_vision_transformer"}
+ACCEPTED_STAGES = {"baseline", "teacher_cnn", "teacher_vision_transformer", "knowledge_distillation", "multi_teacher_knowledge_distillation"}
 ARTIFACT_COLUMNS = {
     "config_path",
     "history_path",
@@ -23,6 +23,7 @@ ARTIFACT_COLUMNS = {
     "confusion_matrix_csv_path",
     "confusion_matrix_png_path",
     "learning_curves_path",
+    "run_metadata_path",
 }
 
 
@@ -48,6 +49,8 @@ def _json_value(value: Any) -> Any:
         return None
     if isinstance(value, (str, int, float, bool)) or value is None:
         return value
+    if isinstance(value, (dict, list, tuple)):
+        return json.dumps(value, sort_keys=True)
     return str(value)
 
 
@@ -69,7 +72,7 @@ def create_external_bundle(
     if stage not in ACCEPTED_STAGES:
         raise ValueError(f"Unsupported external stage: {stage}")
     dataset = str(result_row.get("dataset_name", ""))
-    model = str(result_row.get("model_name", ""))
+    model = str(result_row.get("model_name") or result_row.get("student_model_name") or "")
     if not dataset or not model:
         raise ValueError("dataset_name and model_name are required.")
     if not result_row.get("run_name") or not re.fullmatch(r"[0-9a-f]{40}", source_commit):
@@ -128,8 +131,19 @@ def create_external_bundle(
                 ).hexdigest(),
             }
 
+    dataset_ref = result_row.get("dataset_ref")
+    if isinstance(dataset_ref, str):
+        dataset_ref = json.loads(dataset_ref) if dataset_ref not in {"", "null", "nan"} else None
+    package = None
+    if dataset_ref:
+        try:
+            from datasets.dataset_runtime import dataset_package
+        except ModuleNotFoundError:
+            from src.datasets.dataset_runtime import dataset_package
+        package = dataset_package(project_root, dataset_ref)
+    version = 2 if dataset_ref or stage.endswith("distillation") else 1
     manifest = {
-        "schema_version": 1,
+        "schema_version": version,
         "bundle_id": bundle_id,
         "stage": stage,
         "dataset": dataset,
@@ -143,6 +157,10 @@ def create_external_bundle(
         "checkpoint": checkpoint_meta,
         "split": split_meta,
     }
+    if version == 2:
+        manifest["dataset_ref"] = dataset_ref
+        manifest["dataset_package"] = package
+        manifest["split_metadata"] = split_data if split_meta else None
     canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode()
     manifest["fingerprint"] = hashlib.sha256(canonical).hexdigest()
 

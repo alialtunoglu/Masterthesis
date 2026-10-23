@@ -99,6 +99,15 @@ class DistillationLaunchGuardTests(unittest.TestCase):
 
 
 class LauncherLayoutTests(unittest.TestCase):
+    def test_every_launcher_exposes_epoch_recovery(self):
+        for path, _ in (*LAUNCHERS, *DISTILLERS):
+            with self.subTest(page=path):
+                app = _run(path)
+                self.assertIn(
+                    "Epoch sonunda kurtarma kaydı",
+                    [toggle.label for toggle in app.toggle],
+                )
+
     def test_notebook_export_is_offered_after_the_launch_buttons(self):
         for path, launch_label in LAUNCHERS:
             with self.subTest(page=path):

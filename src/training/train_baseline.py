@@ -19,12 +19,16 @@ for path in (SRC_DIR, CURRENT_DIR):
         sys.path.insert(0, str(path))
 
 from datasets.dataloaders import create_dataloaders
-from datasets.dataset_registry import DATASETS, PROJECT_ROOT, SPLITS_DIR
+from datasets.dataset_registry import DATASETS, PROJECT_ROOT, SPLITS_DIR, get_dataset_catalog, DatasetRef
+from datasets.dataset_runtime import resolve_dataset_runtime, verify_dataset_content
+from training.experiment_config import resolve_experiment_config
 from evaluation.metrics import compute_per_class_metrics
 from evaluation.reports import save_confusion_matrix_artifacts, save_learning_curves
-from models.model_factory import SUPPORTED_MODELS, create_model
+from models.model_factory import STUDENT_MODELS, create_model
+from models.model_catalog import STUDENT_VIT_MODELS
+from tracking.experiment_taxonomy import enrich_experiment_metadata
 from models.model_info import get_model_summary_dict
-from tracking.experiment_naming import build_experiment_name, build_run_name
+from tracking.experiment_naming import build_experiment_name, build_unique_run_name
 from tracking.mlflow_tracker import (
     end_run,
     log_artifact,
@@ -35,8 +39,12 @@ from tracking.mlflow_tracker import (
     start_run,
 )
 from training.trainer import fit
-from utils.io import ensure_dir, load_json, save_json
+from training.kd_config import TrainingConfig
+from training.optimization import create_optimizer, create_scheduler
+from utils.io import ensure_dir, load_json, save_json, upsert_result_row
 from utils.seed import set_seed
+from training.recovery import (add_recovery_arguments, create_recovery, recovery_settings,
+                               mark_recovery, TrainingStopped)
 
 
 RESULTS_DIR = PROJECT_ROOT / "results" / "baseline"
@@ -56,6 +64,11 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "pretrained": False,
     "optimizer": "adamw",
     "scheduler": "none",
+    "optimizer_params": {},
+    "scheduler_params": {},
+    "early_stopping_patience": None,
+    "monitor_metric": "val_macro_f1",
+    "use_augmentation": True,
     "num_workers": 0,
     "device": "auto",
     "dry_run": False,
@@ -67,6 +80,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
 }
 
 BASELINE_RESULT_COLUMNS = [
+    "stage", "training_method", "model_role", "architecture_family",
     "run_name",
     "mlflow_run_id",
     "dataset_name",
@@ -110,13 +124,15 @@ BASELINE_RESULT_COLUMNS = [
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a baseline student training experiment.")
     parser.add_argument("--config", default=None, help="Path to a baseline JSON config file.")
-    parser.add_argument("--dataset", choices=sorted(DATASETS.keys()), default=None)
-    parser.add_argument("--model", choices=sorted(SUPPORTED_MODELS), default=None)
+    parser.add_argument("--dataset", choices=sorted(get_dataset_catalog(PROJECT_ROOT)), default=None)
+    parser.add_argument("--model", choices=sorted(STUDENT_MODELS), default=None)
     parser.add_argument("--epochs", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--image-size", type=int, default=None)
     parser.add_argument("--lr", type=float, default=None)
     parser.add_argument("--weight-decay", type=float, default=None)
+    parser.add_argument("--scheduler", choices=["none", "cosine"], default=None)
+    parser.add_argument("--early-stopping-patience", type=int, default=None)
     parser.add_argument("--num-workers", type=int, default=None)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--pretrained", dest="pretrained", action="store_true", default=None)
@@ -128,6 +144,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true", default=None)
     parser.add_argument("--experiment-name", default=None)
     parser.add_argument("--tracking-uri", default=None)
+    add_recovery_arguments(parser)
     return parser.parse_args()
 
 
@@ -163,6 +180,8 @@ def cli_overrides(args: argparse.Namespace) -> dict[str, Any]:
         "image_size": args.image_size,
         "learning_rate": args.lr,
         "weight_decay": args.weight_decay,
+        "scheduler": args.scheduler,
+        "early_stopping_patience": args.early_stopping_patience,
         "num_workers": args.num_workers,
         "seed": args.seed,
         "pretrained": args.pretrained,
@@ -181,22 +200,33 @@ def build_final_config(args: argparse.Namespace) -> dict[str, Any]:
     config = dict(DEFAULT_CONFIG)
     config.update(load_config_file(args.config))
     config.update(cli_overrides(args))
-    config["stage"] = config.get("stage") or "baseline"
+    config["stage"] = "baseline"
     config["optimizer"] = str(config.get("optimizer") or "adamw").lower()
     config["scheduler"] = str(config.get("scheduler") or "none").lower()
 
-    if config["dataset_name"] not in DATASETS:
-        supported = ", ".join(sorted(DATASETS))
+    if config["dataset_name"] not in get_dataset_catalog(PROJECT_ROOT) and not config.get("dataset_ref"):
+        supported = ", ".join(sorted(get_dataset_catalog(PROJECT_ROOT)))
         raise ValueError(f"Unsupported or missing dataset_name. Supported datasets: {supported}")
-    if config["model_name"] not in SUPPORTED_MODELS:
-        supported = ", ".join(sorted(SUPPORTED_MODELS))
+    if config["model_name"] not in STUDENT_MODELS:
+        supported = ", ".join(sorted(STUDENT_MODELS))
         raise ValueError(f"Unsupported or missing model_name. Supported models: {supported}")
+    if config["model_name"] in STUDENT_VIT_MODELS and int(config["image_size"]) != 224:
+        raise ValueError("Student ViT models require image_size=224.")
     if config["optimizer"] != "adamw":
         raise ValueError("Only optimizer='adamw' is supported in the baseline pipeline for now.")
-    if config["scheduler"] != "none":
-        raise ValueError("Only scheduler='none' is supported in the baseline pipeline for now.")
+    if config["scheduler"] not in {"none", "cosine"}:
+        raise ValueError("Baseline scheduler must be 'none' or 'cosine'.")
+    for key in ("optimizer_params", "scheduler_params"):
+        if not isinstance(config[key], dict):
+            raise ValueError(f"{key} must be a JSON object.")
+    patience = config["early_stopping_patience"]
+    if patience is not None and (not isinstance(patience, int) or isinstance(patience, bool) or patience < 0):
+        raise ValueError("early_stopping_patience must be a non-negative integer or null.")
+    config["early_stopping_patience"] = patience or None
+    if config["monitor_metric"] != "val_macro_f1":
+        raise ValueError("Baseline monitor_metric must be 'val_macro_f1'.")
 
-    return config
+    return enrich_experiment_metadata(resolve_experiment_config(PROJECT_ROOT, config))
 
 
 def select_device(device_arg: str) -> torch.device:
@@ -216,17 +246,7 @@ def resolve_split_file(dataset_key: str) -> Path:
 
 
 def append_summary_row(row: dict[str, Any], output_path: Path) -> None:
-    ensure_dir(output_path.parent)
-    row_dataframe = pd.DataFrame([row])
-    if output_path.exists():
-        existing = pd.read_csv(output_path)
-        output = pd.concat([existing, row_dataframe], ignore_index=True)
-    else:
-        output = row_dataframe
-
-    extra_columns = [column for column in output.columns if column not in BASELINE_RESULT_COLUMNS]
-    output = output.reindex(columns=BASELINE_RESULT_COLUMNS + extra_columns)
-    output.to_csv(output_path, index=False)
+    upsert_result_row(row, output_path, BASELINE_RESULT_COLUMNS)
 
 
 def prefixed(prefix: str, metrics: dict[str, float]) -> dict[str, float]:
@@ -297,6 +317,9 @@ def add_runtime_fields(
             "confusion_matrix_csv_path": relative(paths["confusion_matrix_csv"]),
             "confusion_matrix_png_path": relative(paths["confusion_matrix_png"]),
             "learning_curves_path": relative(paths["learning_curves"]),
+            "run_dir": relative(paths["run_dir"]),
+            "config_path": relative(paths["config"]),
+            "run_metadata_path": relative(paths["run_dir"] / "run_metadata.json"),
         }
     )
     final_config.update(model_summary)
@@ -363,14 +386,19 @@ def main() -> None:
     ensure_dir(CHECKPOINTS_DIR / "pretrained")
     os.environ.setdefault("TORCH_HOME", str((CHECKPOINTS_DIR / "pretrained").resolve()))
 
-    split_file = resolve_split_file(config["dataset_name"])
+    dataset_runtime = resolve_dataset_runtime(PROJECT_ROOT, config.get("dataset_ref"), config["dataset_name"])
+    if config.get("dataset_ref"):
+        verify_dataset_content(PROJECT_ROOT, DatasetRef(**config["dataset_ref"]))
+    split_file = Path(dataset_runtime["split_file"])
     device = select_device(config["device"])
     train_loader, val_loader, test_loader, class_names = create_dataloaders(
         split_file=split_file,
         image_size=int(config["image_size"]),
         batch_size=int(config["batch_size"]),
         num_workers=int(config["num_workers"]),
-        use_augmentation=True,
+        use_augmentation=bool(config["use_augmentation"]),
+        recovery_seed=int(config["seed"]) if recovery_settings(args, config)["enabled"] else None,
+        project_root=PROJECT_ROOT,
     )
 
     model = create_model(
@@ -379,12 +407,7 @@ def main() -> None:
         pretrained=bool(config["pretrained"]),
     ).to(device)
     model_summary = get_model_summary_dict(model)
-    run_name = build_run_name(
-        config["dataset_name"],
-        config["model_name"],
-        int(config["seed"]),
-        extra=build_run_name_extra(config, device),
-    )
+    run_name = build_unique_run_name("baseline", int(config["seed"]), device.type, bool(config["dry_run"]))
     paths = build_artifact_paths(run_name, config["dataset_name"], config["model_name"])
     ensure_dir(paths["run_dir"])
     final_config = add_runtime_fields(
@@ -398,6 +421,7 @@ def main() -> None:
         model_summary=model_summary,
         paths=paths,
     )
+    final_config.update({key: value for key, value in dataset_runtime.items() if key != "split_file" and value is not None})
     save_json(final_config, paths["config"])
 
     experiment_name = final_config["experiment_name"] or build_experiment_name("baseline")
@@ -421,7 +445,10 @@ def main() -> None:
         flush=True,
     )
 
+    recovery = None
+    status = "FINISHED"
     try:
+        recovery = create_recovery(args, config, paths, split_file, PROJECT_ROOT, run.info.run_id)
         log_params(final_config)
         log_artifact(paths["config"])
         log_text("\n".join(class_names), "class_names.txt")
@@ -433,11 +460,17 @@ def main() -> None:
             print(f"Forward pass output classes: {int(dry_metrics['dry_run_output_classes'])}")
             return
 
-        optimizer = torch.optim.AdamW(
-            model.parameters(),
-            lr=float(final_config["learning_rate"]),
+        optimization = TrainingConfig(
+            epochs=int(final_config["epochs"]),
+            learning_rate=float(final_config["learning_rate"]),
             weight_decay=float(final_config["weight_decay"]),
+            optimizer=final_config["optimizer"],
+            optimizer_params=final_config["optimizer_params"],
+            scheduler=final_config["scheduler"],
+            scheduler_params=final_config["scheduler_params"],
         )
+        optimizer = create_optimizer(model.parameters(), optimization)
+        scheduler = create_scheduler(optimizer, optimization)
         training_output = fit(
             model=model,
             train_loader=train_loader,
@@ -445,6 +478,7 @@ def main() -> None:
             test_loader=test_loader,
             class_names=class_names,
             optimizer=optimizer,
+            scheduler=scheduler,
             device=device,
             epochs=int(final_config["epochs"]),
             checkpoint_path=paths["checkpoint"],
@@ -453,6 +487,9 @@ def main() -> None:
             max_val_batches=final_config["max_val_batches"],
             max_test_batches=final_config["max_test_batches"],
             checkpoint_metadata=final_config,
+            early_stopping_patience=final_config["early_stopping_patience"],
+            monitor_metric=final_config["monitor_metric"],
+            recovery=recovery,
         )
 
         write_training_artifacts(training_output, class_names, paths)
@@ -473,6 +510,10 @@ def main() -> None:
         log_metrics({"test_loss": training_output["test_loss"], **prefixed("test", test_metrics)})
 
         summary_row = build_summary_row(final_config, run_name, run.info.run_id, training_output)
+        if summary_row.get("dataset_ref"):
+            summary_row["dataset_ref"] = json.dumps(summary_row["dataset_ref"], sort_keys=True)
+        summary_row.update({"training_time_seconds": recovery.elapsed_seconds(), "backup_time_seconds": recovery.backup_seconds})
+        log_metrics({key: summary_row[key] for key in ("training_time_seconds", "backup_time_seconds")})
         append_summary_row(summary_row, paths["summary"])
 
         for artifact_key in (
@@ -495,8 +536,20 @@ def main() -> None:
         print(f"Test macro_f1: {test_metrics.get('macro_f1'):.4f}")
         print(f"Checkpoint: {relative(paths['checkpoint'])}")
         print(f"Results: {relative(paths['summary'])}")
+    except TrainingStopped:
+        status = "KILLED"
+        print("TRAINING_STOPPED saved at epoch boundary", flush=True)
+    except BaseException:
+        status = "FAILED"
+        raise
     finally:
-        end_run()
+        mark_recovery(recovery, status)
+        try:
+            if (paths["run_dir"] / "run_metadata.json").is_file():
+                log_artifact(paths["run_dir"] / "run_metadata.json")
+        except Exception as error:
+            print(f"RUN_METADATA_LOG_WARNING {error}", flush=True)
+        end_run(status)
 
 
 if __name__ == "__main__":

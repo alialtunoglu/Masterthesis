@@ -34,7 +34,7 @@ def largest_remainder_counts(total: int, ratios: dict[str, float]) -> dict[str, 
     return counts
 
 
-def stratified_split(samples: list[dict], seed: int) -> dict[str, list[dict]]:
+def stratified_split(samples: list[dict], seed: int, ratios: dict[str, float] | None = None) -> dict[str, list[dict]]:
     by_label: dict[str, list[dict]] = defaultdict(list)
     for sample in samples:
         by_label[sample["label"]].append(sample)
@@ -45,7 +45,7 @@ def stratified_split(samples: list[dict], seed: int) -> dict[str, list[dict]]:
     for label in sorted(by_label):
         class_samples = sorted(by_label[label], key=lambda sample: sample["path"])
         rng.shuffle(class_samples)
-        counts = largest_remainder_counts(len(class_samples), SPLIT_RATIO)
+        counts = largest_remainder_counts(len(class_samples), ratios or SPLIT_RATIO)
 
         train_end = counts["train"]
         val_end = train_end + counts["val"]

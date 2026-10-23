@@ -22,6 +22,8 @@ Altyapı:
 - Plant Pathology 2021 için logit, feature ve relation tabanlı single-teacher KD altyapısı hazır.
 - Multi-teacher KD altyapısı hazır.
 - Colab/Kaggle için portable notebook üretimi ve harici run import altyapısı hazır.
+- Epoch sonunda doğrulanmış eğitim kurtarma kaydı ve devam job'ı hazır.
+- Results Explorer içinde protokol kontrollü deney karşılaştırma ve rapor export'u hazır.
 
 Üretilmiş sonuçlar:
 
@@ -224,6 +226,33 @@ runs/queue_worker_heartbeat.json
 runs/logs/queue_worker.log
 ```
 
+## Eğitim Kurtarma ve Devam
+
+Yeni baseline, CNN/ViT teacher, single-KD ve multi-teacher KD eğitimleri her
+tamamlanan epoch sonrasında model/student, optimizer, scheduler, early stopping,
+RNG, DataLoader generator ve varsa KD adapter durumunu kaydeder. Son iki doğrulanmış
+generation run dizininin `recovery/` klasöründe tutulur. `best.pt` değerlendirme
+checkpoint'idir; tek başına resume kaydı değildir.
+
+Job Monitor'daki `Epoch Sonunda Kaydet ve Durdur` mevcut epoch tamamlanınca güvenli
+kayıt alıp işi `stopped` durumuna geçirir. `Zorla Durdur` tamamlanmamış epoch'u
+kaybedebilir. Geçerli kaydı olan stopped/failed işlerde `Devam Et`, aynı
+`experiment_id` altında yeni job, attempt ve MLflow run oluşturur. Config, split,
+class mapping, kaynak commit, paket sürümleri ve teacher checkpoint hash'i değişmişse
+devam başlatılmaz.
+
+CLI seçenekleri:
+
+```text
+--resume-from <recovery/.../epoch-000012>
+--backup-dir <kalıcı-klasör>
+--no-recovery
+```
+
+Kalıcı yedek isteğe bağlıdır ve epoch sonunda senkron kopyalanır. Yedek hatası yerel
+kaydı silmez. Aktif bir resume kaynağı arşivlenemez/silinemez; toplu reset de aktif
+job varken çalışmaz.
+
 ## Student Baseline Eğitimi
 
 Configler:
@@ -356,9 +385,13 @@ eder, veri setini hazırlar, eğitimi canlı log akışıyla koşturur ve sonucu
 Export yalnızca şu koşullarda etkinleşir:
 
 - `origin` public bir `https://github.com/...` adresi olmalı.
-- Çalışma ağacı temiz olmalı.
-- Yerel HEAD, origin üzerindeki aktif branch'e push edilmiş olmalı.
+- GitHub üzerinde klonlanabilir en az bir commit bulunmalı.
 - Komut `--dry-run` içermemeli.
+
+Commit veya push yapılmamış yerel değişiklikler indirmeyi engellemez. Notebook,
+seçili branch yayımlanmışsa oradaki commit'i, değilse uzak deponun varsayılan
+branch'indeki commit'i kullanır; yerel değişiklikleri içermez. Bu nedenle yeni
+yerel ayarlar eski yayımlanmış kodla uyumsuzsa notebook çalışmayabilir.
 
 Sonuç bundle'ı kalıcı bir konuma yazılır; çalışma zamanı kapanınca kaybolmaz:
 
@@ -370,8 +403,10 @@ Sonuç bundle'ı kalıcı bir konuma yazılır; çalışma zamanı kapanınca ka
 
 Colab'da Drive bağlama onayı notebook'un başındaki `Result destination` hücresinde
 istenir. Onayı defteri başlatırken bir kez verirsiniz; eğitim bittiğinde bilgisayar
-başında olmanız gerekmez. Drive bağlanamazsa hücre çökmez, `/content` altına düşer ve
-bundle'ın kalıcı olmadığını uyarır.
+başında olmanız gerekmez. Epoch kurtarma kayıtları varsayılan olarak
+`MyDrive/MasterThesis/recovery/` altına yazılır. Drive bağlanamazsa eğitim başlamaz;
+geçici `/content` kullanımına ancak notebook'taki volatile fallback ayarı bilinçli
+olarak açılırsa izin verilir.
 
 Kaggle'da interaktif oturum boşta kalıp düşerse `/kaggle/working` de kaybolabilir.
 Ekran başında beklememek için defteri `Save Version` ile çalıştırın: notebook headless
@@ -411,6 +446,23 @@ WinError 10013
 Gerçek karşılaştırmalı eğitimlerde mümkünse `pretrained=true` kullanılmalıdır.
 
 ## Sonuç Analizi
+
+Results Explorer'daki `Karşılaştırma ve Rapor` sekmesi baseline, gerçek teacher
+run'ları, single-KD, multi-teacher KD ve yalnızca kaydedilmişse weighted ensemble
+sonucunu aynı raporda gösterir. Otomatik baseline seçimi test skoruna bakmaz; aynı
+dataset/student/seed ve doğrulanmış ortak protokol içinden en yüksek validation
+Macro-F1'i seçer. Eski kayıtlarda dataset/protokol fingerprint'i yoksa uyumluluk
+tahmin edilmez ve sınırlılık uyarısı verilir.
+
+İndirmeler aynı rapor nesnesinden üretilir:
+
+- Markdown analiz raporu
+- CSV (tam hassasiyet)
+- IEEE iki sütun belgeye uygun LaTeX `table*`
+- Kaynak dosya hash'leri ve seçim politikasını içeren JSON manifest
+
+Delta değerleri yüzde puandır: `100 × (deney F1 - baseline F1)`. Farklı ortak eğitim
+ayarlarıyla elde edilen fark yalnızca KD etkisi olarak etiketlenmez.
 
 Student baseline analiz raporu üretmek için:
 
@@ -486,9 +538,44 @@ boş olarak geri kurulur.
 8. Job Monitor’dan log ve durum takip et.
 9. Results Explorer’dan sonuçları incele.
 
+## Baseline Deneylerinde Rol ve Mimari
+
+`Yeni deney` ekranında önce `Baseline`, ardından `Student` / `Teacher` ve
+`CNN` / `ViT` seçilir. Student ViT seçenekleri `deit_tiny_patch16_224` ve
+`deit_small_patch16_224` modelleridir. Üç veri seti için hazır ayarlar
+`configs/baseline/vision_transformers/<dataset>/` altındadır.
+Bu student şablonları mevcut baseline eğitim hattını kullanır: 224×224 giriş,
+30 epoch, batch 32, AdamW, learning rate `1e-4`, weight decay `0.05`,
+scheduler yok. Bunlar başlangıç ayarlarıdır; üstün performans iddiası değildir.
+KD kapsamı genişletilebilir veri/model akışıyla genişletilmiştir.
+
+Depolama uyumluluğu için `stage` değerleri korunur: `baseline`, `teacher_cnn`,
+`teacher_vision_transformer` ve mevcut KD aşamaları. Yeni kayıtlar ayrıca
+`training_method`, `model_role` ve `architecture_family` taşır. Deneyler ekranı
+bu alanlarla filtrelenebilir; eski sonuç CSV'leri yerinde yeniden yazılmaz.
+Filtreler veri setinden başlayarak daralır. Kayıt bulunmayan eğitim türleri
+pasiftir. KD seçiminde rol/mimari yerine student ve teacher alanları; multi-KD'de
+ayrıca teacher sayısı, tam kombinasyonu ve aggregation gösterilir.
+`Filtreleri temizle`, aramayı ve tüm seçimleri sıfırlar; deney dosyalarını değiştirmez.
+
+Eski job metadata'sını kontrol etmek için `python scripts/backfill_job_metadata.py`
+kullanılır. Yazmak için açıkça `--apply` gerekir; önce orijinal dosyalar
+`runs/metadata_backups/` altında SHA-256 manifestiyle yedeklenir.
+Aktif veya çelişkili job'lar değiştirilmez.
+
+Yeni DeiT modellerini Colab/Kaggle notebook'unda kullanmak için bu kod ve
+configlerin notebook'un klonladığı uzak Git sürümünde de bulunması gerekir.
+Yerel, henüz yayımlanmamış değişiklikler uzak sürüme otomatik taşınmaz.
+
 ## Daha Fazla Dokümantasyon
 
+Yeni single-label klasör verilerini **Veri Setleri** ekranından kaydedip sabit
+bölmeyle baseline ve KD yollarında kullanabilirsiniz. Veri revision/split'i
+snapshot'a sabitlenir. Eski veriler ve sonuçlar otomatik taşınmaz veya yeniden
+bölünmez. Şablon ve uzak notebook adımları: `docs/DATASET_TEMPLATE.md`.
+
 - `docs/DATASETS.md`
+- `docs/DATASET_TEMPLATE.md`
 - `docs/ENVIRONMENT.md`
 - `docs/MLFLOW.md`
 - `docs/WEB_UI.md`

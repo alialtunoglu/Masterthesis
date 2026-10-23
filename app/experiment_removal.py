@@ -26,8 +26,9 @@ ARTIFACT_COLUMNS = (
     "learning_curves_path",
     "import_receipt_path",
     "external_bundle_dir",
+    "run_metadata_path",
 )
-ACTIVE_JOB_STATUSES = frozenset({"queued", "running"})
+ACTIVE_JOB_STATUSES = frozenset({"queued", "running", "stop_requested"})
 INTERRUPTED_JOB_STATUSES = frozenset({"cancelled", "failed", "stopped"})
 JOB_RUN_CONTEXT_PREFIX = "JOB_RUN_CONTEXT "
 
@@ -163,6 +164,18 @@ def _load_job_records(jobs_dir: Path) -> list[Mapping[str, Any]]:
     return records
 
 
+def _active_resume_claims(project_root: Path, paths: list[Path]) -> list[str]:
+    claimed_by: list[str] = []
+    for job in _load_job_records(project_root / "runs/jobs"):
+        if _text(job.get("status")) not in ACTIVE_JOB_STATUSES or not _text(job.get("resume_from")):
+            continue
+        source = Path(_text(job["resume_from"]))
+        source = (source if source.is_absolute() else project_root / source).resolve()
+        if any(source == path.resolve() or source.is_relative_to(path.resolve()) for path in paths):
+            claimed_by.append(_text(job.get("job_id")) or "unknown")
+    return claimed_by
+
+
 def _resolve_job_log_path(root: Path, value: Any) -> Path | None:
     log_value = _text(value)
     if not log_value:
@@ -223,6 +236,7 @@ class ExperimentRemovalService:
         csv_mutations = self._find_csv_mutations(identity)
         artifact_paths = self._artifact_paths(row)
         job_paths, active_job_ids = self._matching_job_paths(identity)
+        active_job_ids.extend(_active_resume_claims(self.project_root, artifact_paths))
         if active_job_ids:
             joined_ids = ", ".join(active_job_ids)
             raise ExperimentActiveError(
@@ -332,6 +346,18 @@ class ExperimentRemovalService:
                 else ("results", "checkpoints")
             )
             validated = self._validate_project_path(path, allowed_roots=allowed_roots)
+            if column == "checkpoint_path" and validated.is_dir():
+                raise ExperimentRemovalError("Checkpoint yolu klasör olamaz.")
+            if column == "run_dir" and ("runs" not in validated.relative_to(self.project_root).parts or validated.name == "runs"):
+                raise ExperimentRemovalError("Run klasörü tek bir koşunun artifact dizini olmalıdır.")
+            if column == "run_dir":
+                from src.tracking.artifact_paths import validate_run_directory
+                try:
+                    validate_run_directory(validated.relative_to(self.project_root), row)
+                except ValueError as error:
+                    raise ExperimentRemovalError(str(error)) from error
+                if validated.is_dir() and any(child.is_dir() and child.name != "recovery" for child in validated.iterdir()):
+                    raise ExperimentRemovalError("Run klasörü başka koşulara ait alt klasörler içeriyor.")
             paths.append(validated)
             if column not in {
                 "run_dir",
@@ -342,12 +368,12 @@ class ExperimentRemovalService:
                 run_artifact_paths.append(validated)
 
         if not has_explicit_run_dir:
-            inferred_run_dir = self._infer_run_dir(run_artifact_paths)
+            inferred_run_dir = self._infer_run_dir(run_artifact_paths, row)
             if inferred_run_dir:
                 paths.append(inferred_run_dir)
         return [path for path in paths if path.exists()]
 
-    def _infer_run_dir(self, artifact_paths: list[Path]) -> Path | None:
+    def _infer_run_dir(self, artifact_paths: list[Path], row: Mapping[str, Any]) -> Path | None:
         """Infer legacy baseline run_dir only when every artifact shares one parent."""
         if not artifact_paths:
             return None
@@ -359,6 +385,13 @@ class ExperimentRemovalService:
         relative_parts = validated.relative_to(self.project_root).parts
         if "runs" not in {part.lower() for part in relative_parts}:
             return None
+        from src.tracking.artifact_paths import validate_run_directory
+        try:
+            validate_run_directory(validated.relative_to(self.project_root), row)
+        except ValueError as error:
+            raise ExperimentRemovalError(str(error)) from error
+        if validated.is_dir() and any(child.is_dir() and child.name != "recovery" for child in validated.iterdir()):
+            raise ExperimentRemovalError("Run klasörü başka koşulara ait alt klasörler içeriyor.")
         return validated
 
     def _matching_job_paths(
@@ -383,7 +416,7 @@ class ExperimentRemovalService:
             relative = resolved.relative_to(self.project_root)
         except ValueError as exc:
             raise ExperimentRemovalError(f"Proje dışındaki yol kaldırılamaz: {path}") from exc
-        if not relative.parts or relative.parts[0].lower() not in allowed_roots:
+        if len(relative.parts) < 2 or relative.parts[0].lower() not in allowed_roots:
             raise ExperimentRemovalError(f"İzin verilmeyen deney yolu: {path}")
         return resolved
 
@@ -558,6 +591,10 @@ class InterruptedJobRemovalService(ExperimentRemovalService):
             self.project_root / "runs/configs" / f"{job_id}.json",
             allowed_roots=("runs",),
         )
+        stop_flag_path = self._validate_project_path(
+            self.project_root / "runs/jobs" / f"{job_id}.stop",
+            allowed_roots=("runs",),
+        )
         log_path = _resolve_job_log_path(self.project_root, job.get("log_path"))
         context = self._read_run_context(log_path)
         run_id = self._optional_text(job.get("mlflow_run_id")) or self._optional_text(
@@ -582,11 +619,18 @@ class InterruptedJobRemovalService(ExperimentRemovalService):
         ]
         removable_paths = [
             path
-            for path in (job_path, log_path, config_snapshot_path)
+            for path in (job_path, log_path, config_snapshot_path, stop_flag_path)
             if path and path.exists()
         ]
         removable_paths.extend(path for path in removable_artifacts if path.exists())
         removable_paths = self._without_nested_paths(removable_paths)
+        active_resume_ids = _active_resume_claims(self.project_root, removable_paths)
+        if active_resume_ids:
+            raise ExperimentActiveError(
+                "Bu kurtarma kaydı aktif bir devam job'ı tarafından kullanılıyor ("
+                + ", ".join(active_resume_ids)
+                + ")."
+            )
 
         identity = ExperimentIdentity(run_name or job_id, run_id or job_id, tracking_uri)
         staging_path, archive_path = self._removal_paths(identity, mode)

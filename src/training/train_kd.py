@@ -23,6 +23,10 @@ for import_path in (SRC_DIR, CURRENT_DIR):
 
 from datasets.dataloaders import create_dataloaders
 from datasets.dataset_registry import DATASETS, PROJECT_ROOT, SPLITS_DIR
+from datasets.dataset_registry import DatasetRef
+from datasets.dataset_runtime import resolve_dataset_runtime, verify_dataset_content
+from training.experiment_config import resolve_experiment_config
+from training.teacher_catalog import validate_teacher_selection
 from evaluation.metrics import compute_per_class_metrics
 from evaluation.reports import save_confusion_matrix_artifacts, save_learning_curves
 from models.model_factory import create_model
@@ -39,10 +43,12 @@ from tracking.mlflow_tracker import (
 from training.kd_config import KDConfig, load_kd_config, merge_kd_config
 from training.kd_features import FeatureCapture, default_feature_layer, infer_feature_shapes
 from training.kd_strategies import create_distillation_strategy
-from training.kd_trainer import fit_kd, freeze_teacher
+from training.kd_trainer import fit_kd, freeze_teacher, train_kd_epoch, evaluate_student
 from training.optimization import create_optimizer, create_scheduler
-from utils.io import ensure_dir, save_json
+from utils.io import ensure_dir, save_json, upsert_result_row
 from utils.seed import set_seed
+from training.recovery import (add_recovery_arguments, create_recovery, recovery_settings,
+                               mark_recovery, TrainingStopped)
 
 
 RESULTS_DIR = PROJECT_ROOT / "results/knowledge_distillation"
@@ -57,6 +63,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--teacher-run-id")
     parser.add_argument("--teacher-checkpoint")
     parser.add_argument("--dry-run", action="store_true", default=None)
+    add_recovery_arguments(parser)
     return parser.parse_args()
 
 
@@ -96,7 +103,7 @@ def load_teacher_checkpoint(
 ) -> dict[str, Any]:
     if not checkpoint_path.exists():
         raise FileNotFoundError(f"Teacher checkpoint not found: {checkpoint_path}")
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True, mmap=True)
     checkpoint_classes = list(checkpoint.get("class_names", []))
     if checkpoint_classes != list(expected_classes):
         raise ValueError("Teacher checkpoint class_names do not match the dataset class order.")
@@ -112,8 +119,7 @@ def build_run_name(config: KDConfig, device: torch.device) -> str:
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
     token = uuid.uuid4().hex[:6]
     return (
-        f"kd__{exp.dataset_name}__{exp.student_model_name}__{exp.teacher_model_name}__"
-        f"{exp.kd_type}__seed{exp.seed}__{device.type}__{timestamp}_{token}"
+        f"kd__{exp.kd_type.split('_')[0]}__s{exp.seed}__{timestamp}_{token}"
     )
 
 
@@ -157,6 +163,10 @@ def model_latency_ms(model, image_size: int, device: torch.device) -> float:
 def flatten_params(config: KDConfig) -> dict[str, Any]:
     flattened: dict[str, Any] = {}
     for section, values in config.to_dict().items():
+        if not isinstance(values, dict):
+            if values:
+                flattened[section] = json.dumps(values, sort_keys=True)
+            continue
         for key, value in values.items():
             flattened[f"{section}.{key}"] = json.dumps(value) if isinstance(value, dict) else value
     return flattened
@@ -178,15 +188,12 @@ def write_artifacts(output: dict, class_names: list[str], paths: dict[str, Path]
 
 
 def append_summary(row: dict[str, Any]) -> None:
-    ensure_dir(SUMMARY_PATH.parent)
-    current = pd.DataFrame([row])
-    if SUMMARY_PATH.exists() and SUMMARY_PATH.stat().st_size:
-        current = pd.concat([pd.read_csv(SUMMARY_PATH), current], ignore_index=True)
-    current.to_csv(SUMMARY_PATH, index=False)
+    upsert_result_row(row, SUMMARY_PATH)
 
 
 def main() -> None:
-    config = build_config(parse_args())
+    args = parse_args()
+    config = load_kd_config(resolve_experiment_config(PROJECT_ROOT, build_config(args).to_dict()))
     exp, train, kd = config.experiment, config.training, config.distillation
     if not exp.teacher_checkpoint_path or not exp.teacher_run_id:
         raise ValueError("A completed teacher_run_id and teacher_checkpoint_path are required.")
@@ -195,13 +202,19 @@ def main() -> None:
         "TORCH_HOME", str((PROJECT_ROOT / "checkpoints/pretrained").resolve())
     )
     device = select_device(train.device)
-    split_file = resolve_split_file(exp.dataset_name)
+    dataset_runtime = resolve_dataset_runtime(PROJECT_ROOT, exp.dataset_ref, exp.dataset_name)
+    if exp.dataset_ref:
+        verify_dataset_content(PROJECT_ROOT, DatasetRef(**exp.dataset_ref))
+    validate_teacher_selection(PROJECT_ROOT, config.to_dict())
+    split_file = Path(dataset_runtime["split_file"])
     loaders = create_dataloaders(
         split_file,
         train.image_size,
         train.batch_size,
         train.num_workers,
         use_augmentation=train.data_augmentation,
+        recovery_seed=exp.seed if recovery_settings(args, config.to_dict())["enabled"] else None,
+        project_root=PROJECT_ROOT,
     )
     train_loader, val_loader, test_loader, class_names = loaders
     student = create_model(
@@ -213,8 +226,8 @@ def main() -> None:
     )
     freeze_teacher(teacher)
 
-    student_layer = kd.student_layer or default_feature_layer(exp.student_model_name)
-    teacher_layer = kd.teacher_layer or default_feature_layer(exp.teacher_model_name)
+    student_layer = (kd.student_layer or default_feature_layer(exp.student_model_name)) if exp.kd_type != "logit_based" else None
+    teacher_layer = (kd.teacher_layer or default_feature_layer(exp.teacher_model_name)) if exp.kd_type != "logit_based" else None
     shapes = None
     if exp.kd_type != "logit_based":
         shapes = infer_feature_shapes(
@@ -225,7 +238,10 @@ def main() -> None:
         kd,
         student_channels=shapes.student[1] if shapes else None,
         teacher_channels=shapes.teacher[1] if shapes else None,
+        feature_mode=shapes.feature_mode if shapes else "spatial",
     ).to(device)
+    if shapes:
+        config = merge_kd_config(config, {"distillation": {"student_layer": student_layer, "teacher_layer": teacher_layer}})
     optimizer = create_optimizer(
         [*student.parameters(), *strategy.parameters()], train
     )
@@ -245,6 +261,7 @@ def main() -> None:
     adapter_params = sum(parameter.numel() for parameter in strategy.parameters())
     runtime = {
         **config.to_dict(),
+        **{key: value for key, value in dataset_runtime.items() if key != "split_file"},
         "run_name": run_name,
         "device": device.type,
         "split_file": relative(split_file),
@@ -252,6 +269,7 @@ def main() -> None:
         "student": {**student_info, "inference_latency_ms": model_latency_ms(student, train.image_size, device)},
         "teacher": {**teacher_info, "inference_latency_ms": model_latency_ms(teacher, train.image_size, device)},
         "adapter_params": adapter_params,
+        "feature_representation": shapes.feature_mode if shapes else None,
         "feature_shapes": {
             "student": list(shapes.student) if shapes else None,
             "teacher": list(shapes.teacher) if shapes else None,
@@ -278,7 +296,10 @@ def main() -> None:
     )
     student_capture = None
     teacher_capture = None
+    recovery = None
+    status = "FINISHED"
     try:
+        recovery = create_recovery(args, config.to_dict(), paths, split_file, PROJECT_ROOT, run.info.run_id)
         log_params(flatten_params(config))
         log_params(
             {
@@ -293,14 +314,14 @@ def main() -> None:
         log_artifact(paths["config"])
         log_text("\n".join(class_names), "class_names.txt")
         if train.dry_run:
-            inputs, _targets = next(iter(train_loader))
-            with torch.no_grad():
-                student_output = student(inputs[:1].to(device))
-                teacher_output = teacher(inputs[:1].to(device))
-            if student_output.shape != teacher_output.shape:
-                raise ValueError("Teacher and student output dimensions do not match.")
+            if exp.kd_type != "logit_based":
+                student_capture = FeatureCapture(student, student_layer)
+                teacher_capture = FeatureCapture(teacher, teacher_layer)
+            metrics = train_kd_epoch(student, teacher, strategy, train_loader, optimizer, device, student_capture, teacher_capture, 1)
+            validation = evaluate_student(student, val_loader, device, class_names, 1)
+            log_metrics({**metrics, "dry_val_loss": validation["loss"]})
             print(
-                f"KD dry-run successful. MLflow run_id={run.info.run_id} output={tuple(student_output.shape)}",
+                f"KD dry-run successful (train/backward + validation). MLflow run_id={run.info.run_id}",
                 flush=True,
             )
             return
@@ -324,10 +345,15 @@ def main() -> None:
             student_capture,
             teacher_capture,
             logger=lambda metrics, step: log_metrics(metrics, step),
+            recovery=recovery,
         )
         write_artifacts(output, class_names, paths)
         best, test = output["best_val_metrics"], output["test_metrics"]
         summary = {
+            "split_file": relative(split_file),
+            **{key: value for key, value in dataset_runtime.items() if key not in {"split_file", "class_names", "dataset_ref"}},
+            "dataset_ref": json.dumps(dataset_runtime["dataset_ref"], sort_keys=True) if dataset_runtime["dataset_ref"] else None,
+            "feature_representation": runtime["feature_representation"],
             "run_name": run_name,
             "mlflow_run_id": run.info.run_id,
             "stage": "knowledge_distillation",
@@ -363,6 +389,9 @@ def main() -> None:
             "confusion_matrix_csv_path": relative(paths["confusion_matrix_csv"]),
             "confusion_matrix_png_path": relative(paths["confusion_matrix_png"]),
             "learning_curves_path": relative(paths["learning_curves"]),
+            "run_metadata_path": relative(paths["run_dir"] / "run_metadata.json"),
+            "training_time_seconds": recovery.elapsed_seconds(),
+            "backup_time_seconds": recovery.backup_seconds,
             "tracking_uri": train.tracking_uri,
         }
         append_summary(summary)
@@ -372,18 +401,32 @@ def main() -> None:
                 "best_val_macro_f1": best.get("macro_f1"),
                 "test_accuracy": test.get("accuracy"),
                 "test_macro_f1": test.get("macro_f1"),
+                "training_time_seconds": summary["training_time_seconds"],
+                "backup_time_seconds": summary["backup_time_seconds"],
             }
         )
         for key, path in paths.items():
             if key != "run_dir" and path.exists():
                 log_artifact(path)
         print(f"KD run complete. MLflow run_id={run.info.run_id}", flush=True)
+    except TrainingStopped:
+        status = "KILLED"
+        print("TRAINING_STOPPED saved at epoch boundary", flush=True)
+    except BaseException:
+        status = "FAILED"
+        raise
     finally:
+        mark_recovery(recovery, status)
+        try:
+            if (paths["run_dir"] / "run_metadata.json").is_file():
+                log_artifact(paths["run_dir"] / "run_metadata.json")
+        except Exception as error:
+            print(f"RUN_METADATA_LOG_WARNING {error}", flush=True)
         if student_capture:
             student_capture.close()
         if teacher_capture:
             teacher_capture.close()
-        end_run()
+        end_run(status)
 
 
 if __name__ == "__main__":

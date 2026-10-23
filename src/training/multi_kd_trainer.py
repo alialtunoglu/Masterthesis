@@ -141,6 +141,7 @@ def fit_multi_teacher_kd(
     student_capture: FeatureCapture | None = None,
     teacher_captures: Sequence[FeatureCapture] | None = None,
     logger: MetricLogger | None = None,
+    recovery=None,
 ) -> dict:
     for teacher in teachers:
         freeze_teacher(teacher)
@@ -150,7 +151,17 @@ def fit_multi_teacher_kd(
     best_val_metrics: dict[str, float] = {}
     history: list[dict[str, float | int]] = []
     without_improvement = 0
-    for epoch in range(1, train.epochs + 1):
+    saved = recovery.restore(student, optimizer, scheduler, None, strategy, train_loader, checkpoint_path) if recovery else {}
+    progress = saved.get("progress", {})
+    history = progress.get("history", history)
+    best_value = progress.get("best_value", best_value)
+    best_epoch = progress.get("best_epoch", best_epoch)
+    best_val_metrics = progress.get("best_val_metrics", best_val_metrics)
+    without_improvement = progress.get("without_improvement", 0)
+    start_epoch = saved.get("epoch", 0) + 1
+    if without_improvement >= train.early_stopping_patience:
+        start_epoch = train.epochs + 1
+    for epoch in range(start_epoch, train.epochs + 1):
         train_metrics = train_multi_teacher_epoch(
             student,
             teachers,
@@ -193,6 +204,11 @@ def fit_multi_teacher_kd(
         else:
             without_improvement += 1
         step_scheduler(scheduler, monitored)
+        if recovery:
+            recovery.save(epoch, {"history": history, "best_value": best_value,
+                                 "best_epoch": best_epoch, "best_val_metrics": best_val_metrics,
+                                 "without_improvement": without_improvement},
+                          student, optimizer, scheduler, None, strategy, train_loader, checkpoint_path)
         if without_improvement >= train.early_stopping_patience:
             print(
                 f"EARLY_STOPPING epoch={epoch}/{train.epochs} best_epoch={best_epoch}",
@@ -232,6 +248,7 @@ def _save_checkpoint(path, student, strategy, epoch, class_names, config) -> Non
             "epoch": epoch,
             "student_state_dict": student.state_dict(),
             "strategy_state_dict": strategy.state_dict(),
+            "feature_representations": getattr(strategy, "feature_modes", None),
             "class_names": class_names,
             "teacher_models": [
                 teacher.model_name for teacher in config.teachers

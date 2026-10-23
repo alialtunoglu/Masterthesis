@@ -1,0 +1,17 @@
+{
+  "epochs": 30,
+  "batch_size": 32,
+  "learning_rate": 0.0003,
+  "weight_decay": 0.0001,
+  "image_size": 224,
+  "early_stopping_patience": 7,
+  "monitor_metric": "val_macro_f1",
+  "optimizer": "adamw",
+  "optimizer_params": {},
+  "scheduler": "cosine",
+  "scheduler_params": {},
+  "use_augmentation": true,
+  "pretrained": true,
+  "num_workers": 4,
+  "seed": 42
+}

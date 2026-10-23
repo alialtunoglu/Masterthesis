@@ -7,10 +7,16 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
 
+from .experiment_config import validate_dataset_selection
+try:
+    from models.model_catalog import STUDENT_MODELS, CNN_TEACHER_MODELS, VISION_TRANSFORMER_TEACHER_MODELS
+except ModuleNotFoundError:
+    from src.models.model_catalog import STUDENT_MODELS, CNN_TEACHER_MODELS, VISION_TRANSFORMER_TEACHER_MODELS
+
 
 SUPPORTED_DATASET = "plantpathology2021"
 SUPPORTED_STUDENT = "mobilenet_v3_small"
-SUPPORTED_TEACHERS = frozenset({"densenet201", "resnet50", "regnet_y_8gf"})
+SUPPORTED_TEACHERS = frozenset(CNN_TEACHER_MODELS | VISION_TRANSFORMER_TEACHER_MODELS)
 SUPPORTED_KD_TYPES = frozenset({"logit_based", "feature_based", "relation_based"})
 SUPPORTED_OPTIMIZERS = frozenset({"adamw", "adam", "sgd"})
 SUPPORTED_SCHEDULERS = frozenset({"cosine", "step", "reduce_on_plateau", "none"})
@@ -27,6 +33,8 @@ class ExperimentConfig:
     teacher_run_id: str | None = None
     teacher_checkpoint_path: str | None = None
     seed: int = 42
+    dataset_ref: dict | None = None
+    teacher_checkpoint_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -62,7 +70,7 @@ class DistillationConfig:
     feature_loss: str = "mse"
     feature_loss_weight: float = 1.0
     teacher_layer: str | None = None
-    student_layer: str = "features.12"
+    student_layer: str | None = None
     adapter: str = "automatic"
     spatial_alignment: str = "automatic"
     relation_type: str = "distance_and_angle"
@@ -74,10 +82,26 @@ class DistillationConfig:
 
 
 @dataclass(frozen=True)
+class RecoveryConfig:
+    enabled: bool = True
+    resume_from: str | None = None
+    backup_dir: str | None = None
+
+    def __post_init__(self):
+        if not isinstance(self.enabled, bool):
+            raise ValueError("recovery.enabled must be boolean")
+        for value in (self.resume_from, self.backup_dir):
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                raise ValueError("recovery paths must be non-empty strings or null")
+
+
+@dataclass(frozen=True)
 class KDConfig:
     experiment: ExperimentConfig
     training: TrainingConfig
     distillation: DistillationConfig
+    recovery: RecoveryConfig = field(default_factory=RecoveryConfig)
+    teacher_inputs: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -97,6 +121,8 @@ def load_kd_config(source: str | Path | Mapping[str, Any]) -> KDConfig:
             experiment=ExperimentConfig(**_mapping(payload, "experiment")),
             training=TrainingConfig(**_mapping(payload, "training")),
             distillation=DistillationConfig(**_mapping(payload, "distillation")),
+            recovery=RecoveryConfig(**payload.get("recovery", {})),
+            teacher_inputs=payload.get("teacher_inputs", []),
         )
     except TypeError as exc:
         raise ValueError(f"Invalid KD config field: {exc}") from exc
@@ -109,10 +135,9 @@ def validate_kd_config(config: KDConfig) -> None:
     errors: list[str] = []
     if exp.stage != "knowledge_distillation":
         errors.append("experiment.stage must be 'knowledge_distillation'")
-    if exp.dataset_name != SUPPORTED_DATASET:
-        errors.append(f"dataset_name must be '{SUPPORTED_DATASET}'")
-    if exp.student_model_name != SUPPORTED_STUDENT:
-        errors.append(f"student_model_name must be '{SUPPORTED_STUDENT}'")
+    validate_dataset_selection(exp.dataset_name, exp.dataset_ref)
+    if exp.student_model_name not in STUDENT_MODELS:
+        errors.append("unsupported student_model_name")
     if exp.teacher_model_name not in SUPPORTED_TEACHERS:
         errors.append(f"unsupported teacher_model_name: {exp.teacher_model_name}")
     if exp.kd_type not in SUPPORTED_KD_TYPES:
@@ -162,6 +187,8 @@ def merge_kd_config(config: KDConfig, overrides: Mapping[str, Mapping[str, Any]]
         values = overrides.get(section, {})
         if values:
             payload[section].update({key: value for key, value in values.items() if value is not None})
+    if "recovery" in overrides:
+        payload["recovery"].update(overrides["recovery"])
     return load_kd_config(payload)
 
 

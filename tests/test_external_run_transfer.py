@@ -19,12 +19,14 @@ class ExternalRunTransferTests(unittest.TestCase):
             source = base / "source"
             target = base / "target"
             artifact = source / "results/baseline/runs/demo/history.csv"
+            metadata = source / "results/baseline/runs/demo/run_metadata.json"
             checkpoint = source / "checkpoints/demo.pt"
             artifact.parent.mkdir(parents=True)
             checkpoint.parent.mkdir(parents=True)
             split = source / "splits/appleleaf9.json"
             split.parent.mkdir(parents=True)
             artifact.write_text("epoch,loss\n1,0.2\n", encoding="utf-8")
+            metadata.write_text('{"experiment_id":"exp","status":"FINISHED"}', encoding="utf-8")
             checkpoint.write_bytes(b"checkpoint")
             split.write_text('{"classes": ["a", "b"]}', encoding="utf-8")
             row = {
@@ -36,6 +38,7 @@ class ExternalRunTransferTests(unittest.TestCase):
                 "test_accuracy": 0.9,
                 "test_macro_f1": 0.8,
                 "history_path": "results/baseline/runs/demo/history.csv",
+                "run_metadata_path": "results/baseline/runs/demo/run_metadata.json",
                 "checkpoint_path": "checkpoints/demo.pt",
                 "split_file": "splits/appleleaf9.json",
             }
@@ -63,6 +66,7 @@ class ExternalRunTransferTests(unittest.TestCase):
                 f"runs/imported/{outputs.bundle_id}.json",
             )
             self.assertTrue((target / "checkpoints/demo.pt").exists())
+            self.assertTrue((target / "results/baseline/runs/demo/run_metadata.json").exists())
             second = import_external_bundle(
                 target, inbox, register_run=lambda *_: self.fail("registered twice")
             )

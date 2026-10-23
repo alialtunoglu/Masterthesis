@@ -6,34 +6,10 @@ import torch.nn as nn
 from torchvision import models
 
 
-STUDENT_MODELS = {
-    "mobilenet_v3_small",
-    "mobilenet_v3_large",
-    "efficientnet_b0",
-    "resnet18",
-}
-
-VISION_TRANSFORMER_TEACHER_MODELS = {
-    "swin_v2_t",
-    "maxvit_t",
-    "vit_b_16",
-    "dinov2_vitb14",
-}
-
-CNN_TEACHER_MODELS = {
-    "resnet50",
-    "resnet101",
-    "densenet121",
-    "densenet201",
-    "vgg19_bn",
-    "efficientnet_b3",
-    "efficientnet_b4",
-    "convnext_tiny",
-    "convnext_base",
-    "regnet_y_8gf",
-}
-
-SUPPORTED_MODELS = STUDENT_MODELS | CNN_TEACHER_MODELS | VISION_TRANSFORMER_TEACHER_MODELS
+from .model_catalog import (
+    STUDENT_MODELS, STUDENT_VIT_MODELS, CNN_TEACHER_MODELS,
+    VISION_TRANSFORMER_TEACHER_MODELS, SUPPORTED_MODELS,
+)
 
 
 def _weights_or_none(weights_enum, pretrained: bool):
@@ -51,7 +27,7 @@ def _replace_classifier(model: nn.Module, num_classes: int, model_name: str) -> 
         model.classifier[-1] = nn.Linear(in_features, num_classes)
         return model
 
-    if model_name in {"resnet18", "resnet50", "resnet101", "regnet_y_8gf"}:
+    if model_name in {"resnet18", "resnet50", "resnet101", "regnet_y_8gf", "shufflenet_v2_x0_5"}:
         in_features = model.fc.in_features
         model.fc = nn.Linear(in_features, num_classes)
         return model
@@ -109,6 +85,16 @@ def create_model(model_name: str, num_classes: int, pretrained: bool = True) -> 
     if num_classes <= 0:
         raise ValueError(f"num_classes must be positive, got {num_classes}")
 
+    if normalized_name == "micronet_m0":
+        from .micronet import create_micronet_m0
+
+        return create_micronet_m0(num_classes, pretrained)
+
+    if normalized_name in STUDENT_VIT_MODELS:
+        import timm
+
+        return timm.create_model(normalized_name, pretrained=pretrained, num_classes=num_classes)
+
     if normalized_name == "dinov2_vitb14":
         import timm
 
@@ -119,7 +105,11 @@ def create_model(model_name: str, num_classes: int, pretrained: bool = True) -> 
             img_size=224,
         )
 
-    if normalized_name == "mobilenet_v3_small":
+    if normalized_name == "shufflenet_v2_x0_5":
+        model = models.shufflenet_v2_x0_5(
+            weights=_weights_or_none(models.ShuffleNet_V2_X0_5_Weights, pretrained)
+        )
+    elif normalized_name == "mobilenet_v3_small":
         model = models.mobilenet_v3_small(
             weights=_weights_or_none(models.MobileNet_V3_Small_Weights, pretrained)
         )

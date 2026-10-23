@@ -5,6 +5,7 @@ from pathlib import Path
 from scripts.reset_experiments import (
     CRITICAL_DIRS,
     existing_output_paths,
+    ensure_no_active_jobs,
     recreate_empty_dirs,
 )
 
@@ -17,6 +18,15 @@ def _project_tree(root: Path, *outputs: str) -> None:
 
 
 class ResetCoverageTests(unittest.TestCase):
+    def test_reset_is_blocked_while_resume_or_training_job_is_active(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            jobs = root / "runs/jobs"
+            jobs.mkdir(parents=True)
+            (jobs / "resume.json").write_text('{"job_id":"resume","status":"stop_requested"}', encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "resume"):
+                ensure_no_active_jobs(root)
+
     def test_reset_collects_current_knowledge_distillation_outputs(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

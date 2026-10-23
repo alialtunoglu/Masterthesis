@@ -1,9 +1,7 @@
-"""Project overview page for the local Streamlit dashboard."""
+"""Overview of real experiment activity."""
 
-from __future__ import annotations
-
-import sys
 from pathlib import Path
+import sys
 
 import streamlit as st
 
@@ -11,65 +9,82 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from result_loader import load_baseline_results, load_csv_if_exists, load_dataset_summary, load_split_summaries
-from ui_utils import show_dataframe_or_warning
+from experiment_runner import cancel_queued_job, get_queue_worker_status, list_jobs
+from experiment_ui import job_identity, open_queued_job, status_label
 
+st.title("Genel bakış")
+st.caption("Yeni bir deney hazırlayın, devam eden eğitimi izleyin veya sonuçları karşılaştırın.")
+if st.button("Yeni deney oluştur"):
+    st.switch_page("pages/0_New_Experiment.py")
+if notice := st.session_state.pop("overview_queue_notice", None):
+    st.success(notice)
 
-st.set_page_config(page_title="Dashboard", layout="wide")
+jobs = list_jobs()
+active = [job for job in jobs if job.get("status") in {"running", "queued", "stop_requested"}]
+active.sort(key=lambda job: {"running": 0, "stop_requested": 1, "queued": 2}[job["status"]])
+running = sum(job.get("status") in {"running", "stop_requested"} for job in active)
+queued = sum(job.get("status") == "queued" for job in active)
+st.subheader("Devam eden deneyler")
+st.write(f"{running} çalışıyor · {queued} kuyrukta")
+if queued and not get_queue_worker_status().get("running"):
+    st.warning("Kuyruk işleyicisi henüz hazır değil; durum ve hata logu için Kuyruk yönetimi bölümünü kontrol edin.")
+    st.page_link("pages/10_Settings.py", label="Ayarlar → Kuyruk yönetimi")
+if not active:
+    st.info("Çalışan veya kuyrukta bekleyen deney yok. Yeni deney ile başlayabilirsiniz.")
+for job in active:
+    if job["status"] == "queued":
+        continue
+    with st.container(border=True):
+        st.markdown(f"#### {job_identity(job)}")
+        st.badge(
+            status_label(job["status"]),
+            icon=":material/play_circle:" if job["status"] == "running" else ":material/pause_circle:",
+            color="green" if job["status"] == "running" else "orange",
+        )
+        st.write(f"Veri seti: {job.get('dataset', '—')}")
+        st.caption(f"Job ID: {job['job_id']}")
+        if st.button("Eğitimi izle", key=f"overview_{job['job_id']}", type="primary"):
+            open_queued_job(job)
+if queued:
+    with st.expander(f"Kuyrukta bekleyenler ({queued})", expanded=True):
+        st.caption("Bekleyen deneyler aşağıdaki sırayla başlatılır. Kuyruktan çıkarmak deney kaydını veya dosyalarını silmez.")
+        pending = sorted(
+            (job for job in active if job["status"] == "queued"),
+            key=lambda job: (job.get("queued_time") or "", job["job_id"]),
+        )
+        for position, job in enumerate(pending, start=1):
+            st.markdown(f"**{position}. {job_identity(job)}**")
+            st.badge("Kuyrukta", icon=":material/schedule:", color="orange")
+            st.caption(f"{job.get('dataset', '—')} · Kuyrukta · Job ID: {job['job_id']}")
+            with st.container(horizontal=True):
+                if st.button("Deney ayrıntıları", key=f"overview_{job['job_id']}"):
+                    open_queued_job(job)
+                with st.popover("Kuyruktan çıkar", icon=":material/playlist_remove:"):
+                    st.write(job_identity(job))
+                    st.write(f"Job ID: {job['job_id']}")
+                    st.write("Bu deney başlatılmayacak. Kaydı ve dosyaları korunacak; çalışan eğitim etkilenmeyecek.")
+                    if st.button("Deneyi kuyruktan çıkar", key=f"overview_cancel_{job['job_id']}"):
+                        try:
+                            cancelled = cancel_queued_job(job)
+                        except OSError:
+                            st.error("Kuyruk kaydı güncellenemedi. Sayfayı yenileyip tekrar deneyin.")
+                        else:
+                            if cancelled.get("cancel_error"):
+                                st.error("Deney artık kuyrukta değil. Güncel durumu görmek için sayfayı yenileyin.")
+                            else:
+                                st.session_state["overview_queue_notice"] = f"{job['job_id']} kuyruktan çıkarıldı. Deney kaydı ve dosyaları korundu."
+                                st.rerun()
 
-st.title("Dashboard")
-
-st.subheader("CUDA Durumu")
-try:
-    # The first import costs a couple of seconds; later reruns are instant.
-    with st.spinner("PyTorch yükleniyor..."):
-        import torch
-
-    cuda_available = torch.cuda.is_available()
-    cols = st.columns(3)
-    cols[0].metric("CUDA available", str(cuda_available))
-    cols[1].metric("CUDA version", torch.version.cuda or "N/A")
-    cols[2].metric(
-        "GPU",
-        torch.cuda.get_device_name(0) if cuda_available else "N/A",
-    )
-except ImportError as exc:
-    st.warning(f"PyTorch import edilemedi: {exc}")
-
-st.subheader("Veri Seti Özeti")
-show_dataframe_or_warning(
-    load_dataset_summary(),
-    "results/dataset_analysis/dataset_summary.csv bulunamadı.",
-)
-
-st.subheader("Split Dosyaları")
-split_df = load_split_summaries()
-show_dataframe_or_warning(split_df, "splits klasöründe okunabilir split JSON bulunamadı.")
-
-st.subheader("Son Baseline Sonuçları")
-baseline_df = load_baseline_results()
-if baseline_df is not None and not baseline_df.empty:
-    st.dataframe(baseline_df.tail(10), width="stretch")
-else:
-    st.info("results/baseline/baseline_results.csv henüz yok.")
-
-st.subheader("Son CNN Teacher Sonuçları")
-teacher_df = load_csv_if_exists("results/teachers/cnn/teacher_results.csv")
-if teacher_df is not None and not teacher_df.empty:
-    st.dataframe(teacher_df.tail(10), width="stretch")
-else:
-    st.info("results/teachers/cnn/teacher_results.csv henüz yok veya boş.")
-
-st.subheader("Son Vision Transformer Teacher Sonuçları")
-vit_df = load_csv_if_exists("results/teachers/vision_transformers/teacher_results.csv")
-if vit_df is not None and not vit_df.empty:
-    st.dataframe(vit_df.tail(10), width="stretch")
-else:
-    st.info("results/teachers/vision_transformers/teacher_results.csv henüz yok veya boş.")
-
-st.subheader("MLflow")
-st.link_button("MLflow UI Aç", "http://127.0.0.1:5000")
-st.page_link(
-    "pages/7_MLflow_Helper.py",
-    label="Başlatma komutu ve kayıtlı deneyler için MLflow Helper'a git",
-)
+recent = sorted(
+    (job for job in jobs if job not in active),
+    key=lambda job: str(job.get("queued_time") or job.get("start_time") or ""),
+    reverse=True,
+)[:5]
+with st.expander(f"Son deneyler ({len(recent)})"):
+    if not recent:
+        st.caption("Tamamlanan veya durdurulan deneyler burada görünecek.")
+    for job in recent:
+        st.write(f"{job_identity(job)} — {status_label(job.get('status'))}")
+        st.caption(f"{job.get('dataset', '—')} · Job ID: {job['job_id']}")
+st.page_link("pages/3_Job_Monitor.py", label="Tüm deneyleri incele")
+st.page_link("pages/4_Results_Explorer.py", label="Sonuçları karşılaştır ve raporla")

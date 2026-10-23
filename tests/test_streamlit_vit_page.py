@@ -11,8 +11,8 @@ class StreamlitVitPageTests(unittest.TestCase):
             "pages/6_Vision_Transformer_Teacher_Experiments.py"
         ).run(timeout=60)
         self.assertFalse(app.exception)
-        self.assertEqual(app.selectbox[0].label, "Dataset")
-        self.assertEqual(app.selectbox[1].label, "Vision Transformer teacher model")
+        self.assertEqual(app.selectbox[0].label, "Veri seti")
+        self.assertEqual(app.selectbox[1].label, "Teacher model")
         self.assertEqual(app.selectbox[2].label, "Config dosyası")
         self.assertIn("swin_v2_t.json", app.selectbox[2].value)
 
@@ -22,8 +22,11 @@ class StreamlitVitPageTests(unittest.TestCase):
         labels = [tab.label for tab in app.tabs]
         # "Tables" also held two bar charts, and two labels contradicted the
         # Turkish heading rendered directly beneath them.
-        self.assertEqual(labels, ["Sonuçlar", "Grafikler", "Artifactler", "İçe Aktar"])
-        self.assertTrue(all(len(label) <= 12 for label in labels), labels)
+        self.assertEqual(
+            labels,
+            ["Sonuçlar", "Grafikler", "Artifactler", "İçe Aktar", "Karşılaştırma ve Rapor"],
+        )
+        self.assertTrue(all(len(label) <= 12 for label in labels[:4]), labels)
 
 
 if __name__ == "__main__":

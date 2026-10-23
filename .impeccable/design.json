@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-16T05:29:38Z",
+  "title": "Design System: MasterThesis",
+  "extensions": {
+    "colorMeta": {
+      "framework-primary": {"role": "primary", "displayName": "Framework Primary"},
+      "framework-primary-content": {"role": "neutral", "displayName": "Framework Primary Content"}
+    },
+    "typographyMeta": {
+      "headline": {"displayName": "Native Title", "purpose": "Observed desktop st.title styling; framework-owned, not an app override."},
+      "body": {"displayName": "Native Control Text", "purpose": "Observed primary-button text; framework-owned, not an app override."}
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary Action",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Default-state preview from measured Streamlit primary-button values. Native browser hover/focus feedback is illustrative; runtime uses st.button and Streamlit states.",
+      "html": "<button class=\"ds-primary\" type=\"button\">Yeni deney</button>",
+      "css": ".ds-primary{background:rgb(255,75,75);color:rgb(255,255,255);border:1px solid rgb(255,75,75);border-radius:8px;padding:4px 12px;font-family:'Source Sans',sans-serif;font-size:16px;font-weight:400;line-height:25.6px}.ds-primary:hover{cursor:pointer}.ds-primary:focus-visible{outline:auto}.ds-primary:active{outline:auto}"
+    },
+    {
+      "name": "Labeled Field",
+      "kind": "input",
+      "description": "Semantic preview only; field measurements and theme states are deliberately not fabricated. Runtime uses native Streamlit fields.",
+      "html": "<label class=\"ds-field\" for=\"ds-run-search\">Deney ara<input id=\"ds-run-search\" class=\"ds-field-input\" type=\"search\" placeholder=\"Model veya Job ID\"></label>",
+      "css": ".ds-field{display:grid;font-family:'Source Sans',sans-serif}.ds-field-input{font:inherit}.ds-field-input:hover{cursor:text}.ds-field-input:focus-visible{outline:auto}"
+    },
+    {
+      "name": "Task Navigation",
+      "kind": "nav",
+      "refersTo": "navigation-item",
+      "description": "Measured native link geometry with browser-owned color/state previews. Runtime uses st.page_link inside st.sidebar.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Çalışma alanı\"><a class=\"ds-nav-item\" href=\"#overview\">Genel bakış</a><a class=\"ds-nav-item\" href=\"#experiments\">Deneyler</a><a class=\"ds-nav-item\" href=\"#results\">Sonuçlar</a><a class=\"ds-nav-item\" href=\"#settings\">Ayarlar</a></nav>",
+      "css": ".ds-nav{display:grid;font-family:'Source Sans',sans-serif;font-size:16px;font-weight:400}.ds-nav-item{display:flex;gap:8px;padding:0 8px;border-radius:8px;line-height:32px}.ds-nav-item:hover{cursor:pointer}.ds-nav-item:focus-visible{outline:auto}"
+    },
+    {
+      "name": "Technical Disclosure",
+      "kind": "custom",
+      "description": "Semantic browser disclosure preview, not a visual clone. Runtime uses st.expander with native Streamlit styles and states.",
+      "html": "<details class=\"ds-disclosure\"><summary class=\"ds-disclosure-summary\">Gelişmiş eğitim ayarları</summary><p>Teknik parametreler gerektiğinde açılır.</p></details>",
+      "css": ".ds-disclosure{font-family:'Source Sans',sans-serif}.ds-disclosure-summary:hover{cursor:pointer}.ds-disclosure-summary:focus-visible{outline:auto}"
+    },
+    {
+      "name": "Compact Results",
+      "kind": "custom",
+      "description": "Content-order preview only; dashes are missing-value placeholders, not research results. Runtime uses st.dataframe and framework table rendering.",
+      "html": "<table class=\"ds-results\"><caption>Sonuçlar</caption><thead><tr><th scope=\"col\">model_name</th><th scope=\"col\">test_macro_f1</th><th scope=\"col\">test_accuracy</th></tr></thead><tbody><tr><th scope=\"row\">mobilenet_v3_small</th><td>—</td><td>—</td></tr></tbody></table>",
+      "css": ".ds-results{font-family:'Source Sans',sans-serif;text-align:left}.ds-results td{text-align:right}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Native research workspace",
+    "overview": "The interface uses Streamlit's existing visual language rather than a separate brand skin. Native headings, captions, controls, tables, alerts and disclosure widgets carry the hierarchy. This is a code-led system record, not an approved visual comp or a replacement visual world.\n\nThe framework owns rendering, focus treatment, theme switching and responsive behavior. The extracted frontmatter records the observed Streamlit 1.59.2 defaults; it is not an instruction to hard-code those values over the framework. Both light and dark themes remain supported. App code does not introduce custom CSS, decorative imagery or animation.",
+    "keyCharacteristics": [
+      "Native Streamlit widgets and theme ownership.",
+      "Clear semantic headings and short explanatory captions.",
+      "Fluid controls and data tables, with optional detail disclosed on demand.",
+      "Turkish action labels with exact research identifiers and metric names retained."
+    ],
+    "rules": [{"name": "The Theme Ownership Rule", "body": "Request semantic Streamlit variants; do not freeze theme-dependent neutrals into app styling.", "section": "colors"}],
+    "dos": [
+      "Do use native Streamlit widgets and semantic variants.",
+      "Do preserve the selectable light and dark themes and native focus behavior.",
+      "Do use semantic headings, visible labels and concise captions.",
+      "Do disclose optional technical detail while keeping blocking errors visible.",
+      "Do retain original research metric names and existing safety confirmations."
+    ],
+    "donts": [
+      "Don't inject custom CSS or replace native widgets with sidecar previews.",
+      "Don't turn the captured dark theme into a fixed dark-only palette.",
+      "Don't add decorative cards, gradients, emoji navigation, imagery or motion.",
+      "Don't treat sampled defaults or synthetic panel previews as a new project theme."
+    ]
+  }
+}

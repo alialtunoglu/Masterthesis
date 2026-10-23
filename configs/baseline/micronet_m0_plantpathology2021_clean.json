@@ -1,0 +1,31 @@
+{
+  "dataset_name": "plantpathology2021_clean",
+  "dataset_ref": {
+    "dataset_id": "plantpathology2021_clean",
+    "revision": "629dfca94858f0bd429bd289b2a83a59dd4beed293e602780193d10afdb6af08",
+    "split_id": "955c38474715ffd540121ab2be7699430e22f9956c110d7cd1617b4b8d007b72"
+  },
+  "seed": 42,
+  "image_size": 224,
+  "batch_size": 32,
+  "epochs": 30,
+  "learning_rate": 0.0003,
+  "weight_decay": 0.0001,
+  "pretrained": true,
+  "optimizer": "adamw",
+  "optimizer_params": {},
+  "scheduler": "cosine",
+  "scheduler_params": {},
+  "early_stopping_patience": 7,
+  "monitor_metric": "val_macro_f1",
+  "use_augmentation": true,
+  "num_workers": 4,
+  "device": "auto",
+  "tracking_uri": "sqlite:///mlflow.db",
+  "recovery": {
+    "enabled": true
+  },
+  "stage": "baseline",
+  "model_name": "micronet_m0",
+  "experiment_name": "MasterThesis-Clean-Student-Control"
+}

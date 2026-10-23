@@ -1,0 +1,11 @@
+{
+  "dataset_id": "plantpathology2021_clean",
+  "display_name": "PlantPathology2021 Clean",
+  "root_relative_path": "datasets/PlantPathology2021Clean",
+  "layout": "imagefolder",
+  "task_type": "single_label_classification",
+  "schema_version": 2,
+  "default_revision": "629dfca94858f0bd429bd289b2a83a59dd4beed293e602780193d10afdb6af08",
+  "default_split": "955c38474715ffd540121ab2be7699430e22f9956c110d7cd1617b4b8d007b72",
+  "ready": true
+}

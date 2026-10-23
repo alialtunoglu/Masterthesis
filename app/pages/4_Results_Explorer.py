@@ -30,6 +30,9 @@ from external_run_import import (
 )
 from result_loader import load_csv_if_exists
 from ui_utils import get_project_root, show_dataframe_or_warning
+from comparison_view import render_comparison
+from dataset_view import filter_result_identity
+from experiment_ui import classify_results, FAMILY_LABELS
 
 
 BASELINE_TABLES = {
@@ -59,6 +62,17 @@ RUN_SUMMARIES = {
     "Vision Transformer Teacher": "results/teachers/vision_transformers/teacher_results.csv",
     "Knowledge Distillation": "results/knowledge_distillation/kd_results.csv",
     "Multi-Teacher KD": "results/multi_teacher_knowledge_distillation/multi_kd_results.csv",
+}
+RESULT_STAGES = dict(zip(RUN_SUMMARIES.values(), (
+    "baseline", "teacher_cnn", "teacher_vision_transformer",
+    "knowledge_distillation", "multi_teacher_knowledge_distillation",
+)))
+SOURCE_LABELS = {
+    "Baseline": "Student baseline",
+    "CNN Teacher": "Teacher baseline — CNN",
+    "Vision Transformer Teacher": "Teacher baseline — ViT",
+    "Knowledge Distillation": "Single-teacher KD",
+    "Multi-Teacher KD": "Multi-teacher KD",
 }
 
 
@@ -260,7 +274,8 @@ def _show_run_artifacts(
                     "exists": bool(path and path.exists()),
                 }
             )
-    st.dataframe(pd.DataFrame(artifact_rows), width="stretch")
+    with st.expander("Artifact dosyaları ve yolları"):
+        st.dataframe(pd.DataFrame(artifact_rows), hide_index=True, width="stretch")
 
     image_cols = st.columns(2)
     confusion_path = _resolve_path(selected_row.get("confusion_matrix_png_path"))
@@ -278,47 +293,19 @@ def _show_run_artifacts(
         else:
             st.info("Learning curves PNG bulunamadı.")
 
-    _render_removal_controls(selected_row)
+    with st.expander("Deneyi arşivle veya kaldır"):
+        _render_removal_controls(selected_row)
 
 
 def _render_kd_comparison(selected_row: pd.Series) -> None:
-    teacher_frame = load_csv_if_exists("results/teachers/cnn/teacher_results.csv")
-    baseline_frame = load_csv_if_exists("results/baseline/baseline_results.csv")
-    rows: list[dict[str, object]] = []
-    teacher_run_id = str(selected_row.get("teacher_run_id", ""))
-    if teacher_frame is not None and "mlflow_run_id" in teacher_frame.columns:
-        matched = teacher_frame[
-            teacher_frame["mlflow_run_id"].astype(str) == teacher_run_id
-        ]
-        if not matched.empty:
-            teacher = matched.iloc[0]
-            rows.append(_comparison_row("Teacher", teacher, "params", "model_size_mb"))
-
-    student_model = str(selected_row.get("student_model_name", ""))
-    dataset = str(selected_row.get("dataset_name", ""))
-    seed = str(selected_row.get("seed", ""))
-    if baseline_frame is not None:
-        matched = baseline_frame[
-            (baseline_frame["model_name"].astype(str) == student_model)
-            & (baseline_frame["dataset_name"].astype(str) == dataset)
-            & (baseline_frame["seed"].astype(str) == seed)
-        ]
-        if not matched.empty:
-            metric = pd.to_numeric(matched["best_val_macro_f1"], errors="coerce")
-            baseline = matched.loc[metric.idxmax()]
-            rows.append(
-                _comparison_row("Student baseline", baseline, "params", "model_size_mb")
-            )
-    rows.append(
-        _comparison_row(
-            "Student + KD",
-            selected_row,
-            "student_params",
-            "student_model_size_mb",
-        )
-    )
-    st.subheader("Teacher / Baseline / KD Karşılaştırması")
-    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+    from src.evaluation.experiment_comparison import load_comparison_runs, build_comparison
+    runs = load_comparison_runs(get_project_root())
+    run_id = str(selected_row.get("mlflow_run_id", ""))
+    report = build_comparison(runs, [run_id], None)
+    st.subheader("Teacher / Baseline / KD karşılaştırması")
+    for warning in report["warnings"]:
+        st.warning(warning)
+    st.dataframe(pd.DataFrame(report["rows"]), hide_index=True, width="stretch")
 
 
 def _json_list(value: object) -> list:
@@ -332,83 +319,14 @@ def _json_list(value: object) -> list:
 
 
 def _render_multi_kd_comparison(selected_row: pd.Series) -> None:
-    teacher_frame = load_csv_if_exists("results/teachers/cnn/teacher_results.csv")
-    baseline_frame = load_csv_if_exists("results/baseline/baseline_results.csv")
-    single_frame = load_csv_if_exists("results/knowledge_distillation/kd_results.csv")
-    run_ids = {str(value) for value in _json_list(selected_row.get("teacher_run_ids"))}
-    teacher_models = {
-        str(value) for value in _json_list(selected_row.get("teacher_models"))
-    }
-    rows: list[dict[str, object]] = []
-    if teacher_frame is not None and "mlflow_run_id" in teacher_frame.columns:
-        for _, teacher in teacher_frame[
-            teacher_frame["mlflow_run_id"].astype(str).isin(run_ids)
-        ].iterrows():
-            rows.append(
-                _comparison_row(
-                    f"Teacher: {teacher.get('model_name')}",
-                    teacher,
-                    "params",
-                    "model_size_mb",
-                )
-            )
-    rows.append(
-        {
-            "model": "Weighted teacher ensemble",
-            "accuracy": selected_row.get("ensemble_test_accuracy"),
-            "macro_f1": selected_row.get("ensemble_test_macro_f1"),
-            "params": selected_row.get("teacher_total_params"),
-            "model_size_mb": None,
-            "estimated_flops": selected_row.get("teacher_total_estimated_flops"),
-        }
-    )
-    dataset = str(selected_row.get("dataset_name", ""))
-    student = str(selected_row.get("student_model_name", ""))
-    seed = str(selected_row.get("seed", ""))
-    if baseline_frame is not None:
-        matched = baseline_frame[
-            (baseline_frame["dataset_name"].astype(str) == dataset)
-            & (baseline_frame["model_name"].astype(str) == student)
-            & (baseline_frame["seed"].astype(str) == seed)
-        ]
-        if not matched.empty:
-            metric = pd.to_numeric(matched["best_val_macro_f1"], errors="coerce")
-            rows.append(
-                _comparison_row(
-                    "Student baseline",
-                    matched.loc[metric.idxmax()],
-                    "params",
-                    "model_size_mb",
-                )
-            )
-    if single_frame is not None:
-        matched = single_frame[
-            (single_frame["dataset_name"].astype(str) == dataset)
-            & (single_frame["student_model_name"].astype(str) == student)
-            & (single_frame["seed"].astype(str) == seed)
-            & (single_frame["kd_type"].astype(str) == str(selected_row.get("kd_type", "")))
-            & (single_frame["teacher_model_name"].astype(str).isin(teacher_models))
-        ]
-        if not matched.empty:
-            metric = pd.to_numeric(matched["best_val_macro_f1"], errors="coerce")
-            rows.append(
-                _comparison_row(
-                    "Best matching single-teacher KD",
-                    matched.loc[metric.idxmax()],
-                    "student_params",
-                    "student_model_size_mb",
-                )
-            )
-    rows.append(
-        _comparison_row(
-            "Student + Multi-Teacher KD",
-            selected_row,
-            "student_params",
-            "student_model_size_mb",
-        )
-    )
-    st.subheader("Teacher / Ensemble / Baseline / KD Karşılaştırması")
-    st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+    from src.evaluation.experiment_comparison import load_comparison_runs, build_comparison
+    runs = load_comparison_runs(get_project_root())
+    run_id = str(selected_row.get("mlflow_run_id", ""))
+    report = build_comparison(runs, [run_id], None)
+    st.subheader("Teacher / Baseline / KD karşılaştırması")
+    for warning in report["warnings"]:
+        st.warning(warning)
+    st.dataframe(pd.DataFrame(report["rows"]), hide_index=True, width="stretch")
 
 
 def _comparison_row(
@@ -532,7 +450,8 @@ def _render_interrupted_jobs(
     )
     with st.expander("Logun son kısmını göster"):
         st.code(read_log_tail(str(selected_job.get("log_path", "")), n_lines=200) or "Log yok.")
-    _render_interrupted_removal_controls(selected_job)
+    with st.expander("Kesintili deneyin kalıntılarını kaldır"):
+        _render_interrupted_removal_controls(selected_job)
 
 
 def _render_interrupted_removal_controls(selected_job: dict[str, object]) -> None:
@@ -586,91 +505,80 @@ def _render_interrupted_removal_controls(selected_job: dict[str, object]) -> Non
         st.rerun()
 
 
-st.set_page_config(page_title="Results Explorer", layout="wide")
-st.title("Results Explorer")
+st.set_page_config(page_title="Sonuçlar", layout="wide")
+st.title("Sonuçlar")
+st.caption("Veri seti bazında sonuçları inceleyin; artifactlere, içe aktarmaya ve karşılaştırma raporuna aşağıdaki sekmelerden ulaşın.")
+from experiment_ui import compact_results
 
-tabs = st.tabs(["Sonuçlar", "Grafikler", "Artifactler", "İçe Aktar"])
+tabs = st.tabs(["Sonuçlar", "Grafikler", "Artifactler", "İçe Aktar", "Karşılaştırma ve Rapor"])
 
 with tabs[0]:
-    selected_table_name = st.selectbox("Tablo seç", list(BASELINE_TABLES))
+    source_labels = {
+        "Raw baseline results": "Student baseline",
+        "CNN teacher results": "Teacher baseline — CNN",
+        "Vision Transformer teacher results": "Teacher baseline — ViT",
+        "Knowledge Distillation results": "Single-teacher KD",
+        "Multi-Teacher KD results": "Multi-teacher KD",
+    }
+    ordered_sources = list(source_labels) + [name for name in BASELINE_TABLES if name not in source_labels]
+    selected_table_name = st.selectbox("Sonuç kaynağı", ordered_sources, format_func=lambda name: source_labels.get(name, name))
     selected_table_path = BASELINE_TABLES[selected_table_name]
-    table_widget_prefix = selected_table_path.replace("/", "_").replace(".", "_")
+    prefix = selected_table_path.replace("/", "_").replace(".", "_")
     df = load_csv_if_exists(selected_table_path)
-    st.caption(selected_table_path)
+    if df is not None and selected_table_path in RESULT_STAGES:
+        df = classify_results(df, RESULT_STAGES[selected_table_path])
     if df is None or df.empty:
-        st.info(f"{selected_table_path} henüz yok veya boş.")
+        st.info("Bu deney türü için sonuç yok. Tamamlanan eğitimler veya içe aktarılan sonuçlar burada görünür.")
     else:
-        with st.sidebar:
-            st.header("Filtreler")
-            filtered = _filter_multiselect(
-                df, "dataset_name", "Dataset", key=f"{table_widget_prefix}_dataset"
-            )
-            filtered = _filter_multiselect(
-                filtered, "model_name", "Model", key=f"{table_widget_prefix}_model"
-            )
-            filtered = _filter_multiselect(
-                filtered,
-                "teacher_family",
-                "Teacher family",
-                key=f"{table_widget_prefix}_teacher_family",
-            )
-            filtered = _filter_multiselect(
-                filtered, "device", "Device", key=f"{table_widget_prefix}_device"
-            )
-            if "pretrained" in filtered.columns:
-                pretrained_values = sorted(
-                    filtered["pretrained"].dropna().astype(str).unique().tolist()
-                )
-                selected_pretrained = st.multiselect(
-                    "Pretrained",
-                    pretrained_values,
-                    default=pretrained_values,
-                    key=f"{table_widget_prefix}_pretrained",
-                )
-                filtered = filtered[filtered["pretrained"].astype(str).isin(selected_pretrained)]
-
-            sort_options = [
-                column
-                for column in [
-                    "test_macro_f1",
-                    "test_accuracy",
-                    "best_val_macro_f1",
-                    "avg_test_macro_f1",
-                ]
-                if column in filtered.columns
-            ]
+        filtered = df
+        if "dataset_name" in df.columns:
+            datasets = sorted(df["dataset_name"].dropna().astype(str).unique().tolist())
+            selected_dataset = st.selectbox("Veri seti", datasets, key=f"{prefix}_dataset_single")
+            filtered = df[df["dataset_name"].astype(str) == selected_dataset]
+        filtered = filter_result_identity(filtered, key=f"{prefix}_identity")
+        with st.expander("Model ve sıralama filtreleri"):
+            if "architecture_family" in filtered:
+                family_options = sorted(filtered["architecture_family"].dropna().unique().tolist())
+                family = st.selectbox("Mimari ailesi", ["all", *family_options], key=f"{prefix}_family",
+                                      format_func=lambda value: "Tümü" if value == "all" else FAMILY_LABELS.get(value, value))
+                if family != "all":
+                    filtered = filtered[filtered["architecture_family"] == family]
+            model_column = "student_model_name" if "student_model_name" in filtered else "model_name"
+            filtered = _filter_multiselect(filtered, model_column, "Model", key=f"{prefix}_model")
+            sort_options = [name for name in ("test_macro_f1", "test_accuracy", "best_val_macro_f1", "avg_test_macro_f1") if name in filtered]
             if sort_options:
-                sort_metric = st.selectbox(
-                    "Sıralama", sort_options, key=f"{table_widget_prefix}_sort_metric"
-                )
-                ascending = st.checkbox(
-                    "Artan sırala", value=False, key=f"{table_widget_prefix}_ascending"
-                )
-                filtered = filtered.sort_values(sort_metric, ascending=ascending)
-
-        show_dataframe_or_warning(filtered, "Seçilen filtrelerle sonuç bulunamadı.")
-
-        if not filtered.empty and {
-            "model_name",
-            "test_accuracy",
-            "test_macro_f1",
-        }.issubset(filtered.columns):
-            chart_cols = st.columns(2)
-            grouped = filtered.copy()
-            grouped["test_accuracy"] = pd.to_numeric(grouped["test_accuracy"], errors="coerce")
-            grouped["test_macro_f1"] = pd.to_numeric(grouped["test_macro_f1"], errors="coerce")
-            model_scores = grouped.groupby("model_name", as_index=True)[
-                ["test_accuracy", "test_macro_f1"]
-            ].mean(numeric_only=True)
-            with chart_cols[0]:
-                st.subheader("Model Bazında Test Accuracy")
-                st.bar_chart(model_scores["test_accuracy"])
-            with chart_cols[1]:
-                st.subheader("Model Bazında Test Macro F1")
-                st.bar_chart(model_scores["test_macro_f1"])
+                sort_metric = st.selectbox("Sıralama metriği", sort_options, key=f"{prefix}_sort")
+                filtered = filtered.sort_values(sort_metric, ascending=False)
+        st.caption(f"{len(filtered)} sonuç · Metrikler 0–1 aralığındadır; farklı veri setleri birleştirilmez.")
+        compact = compact_results(filtered)
+        if not compact.empty:
+            st.dataframe(compact, hide_index=True, width="stretch")
+        elif not filtered.empty:
+            st.info("Bu türetilmiş raporun sütunları aşağıdaki ayrıntı tablosunda gösterilir.")
+        else:
+            st.info("Bu filtrelerle sonuç bulunamadı.")
+        with st.expander("Tüm sütunlar ve kaynak dosya"):
+            st.caption(selected_table_path)
+            st.dataframe(filtered, hide_index=True, width="stretch")
+        model_column = "student_model_name" if "student_model_name" in filtered else "model_name"
+        if "dataset_name" in filtered and model_column in filtered and "test_macro_f1" in filtered and not filtered.empty:
+            st.subheader("Koşu bazında Test Macro-F1")
+            chart = filtered.reset_index(drop=True).copy()
+            labels = chart[model_column].astype(str)
+            if "teacher_model_name" in chart:
+                labels += " ← " + chart["teacher_model_name"].astype(str)
+            if "teacher_models" in chart:
+                labels += " ← " + chart["teacher_models"].astype(str)
+            if "kd_type" in chart:
+                labels += " · " + chart["kd_type"].astype(str)
+            chart["Koşu"] = labels + " · #" + (chart.index + 1).astype(str)
+            chart["Test Macro-F1"] = pd.to_numeric(chart["test_macro_f1"], errors="coerce")
+            st.bar_chart(chart.set_index("Koşu")["Test Macro-F1"])
+            st.caption("Her sütun ayrı bir koşudur; model veya veri setleri arasında ortalama alınmaz.")
 
 with tabs[1]:
     st.subheader("Student Baseline Grafikleri")
+    st.caption("Önceden üretilmiş rapor görselleridir; Sonuçlar sekmesindeki filtrelerden bağımsızdır.")
     for figure in STUDENT_FIGURES:
         path = get_project_root() / figure
         if path.exists():
@@ -680,17 +588,20 @@ with tabs[1]:
             st.warning(f"Eksik grafik: {figure}")
 
 with tabs[2]:
-    run_source = st.selectbox("Deney türü", list(RUN_SUMMARIES), key="artifact_source")
+    run_source = st.selectbox("Deney türü", list(RUN_SUMMARIES), key="artifact_source", format_func=SOURCE_LABELS.get)
     run_summary_path = RUN_SUMMARIES[run_source]
-    st.caption(run_summary_path)
+    st.caption("Run adı veya job ID ile artifact ve güvenli kaldırma işlemlerine ulaşın.")
     df = load_csv_if_exists(run_summary_path)
     jobs = list_jobs()
     if df is None or df.empty:
         st.info("Gösterilecek run artifact tablosu yok.")
     else:
-        filtered = _filter_multiselect(
-            df, "dataset_name", "Dataset", key=f"artifact_dataset_{run_source}"
-        )
+        filtered = df
+        if "dataset_name" in df:
+            dataset_options = sorted(df["dataset_name"].dropna().astype(str).unique().tolist())
+            artifact_dataset = st.selectbox("Veri seti", dataset_options, key=f"artifact_dataset_{run_source}")
+            filtered = df[df["dataset_name"].astype(str) == artifact_dataset]
+        filtered = filter_result_identity(filtered, key=f"artifact_identity_{run_source}")
         model_column = (
             "student_model_name"
             if run_source in {"Knowledge Distillation", "Multi-Teacher KD"}
@@ -745,3 +656,6 @@ with tabs[3]:
                     f"{receipt['mlflow_run_id']}"
                 )
                 st.cache_data.clear()
+
+with tabs[4]:
+    render_comparison(get_project_root())

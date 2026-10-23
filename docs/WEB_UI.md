@@ -101,13 +101,26 @@ Queue ilerlemesi Streamlit refresh'ine bağlı değildir. Bunun için ayrı work
 python app/queue_worker.py
 ```
 
-Worker ayrıca Job Monitor sayfasındaki `Queue Worker Başlat` butonuyla da başlatılabilir. Streamlit kapatılsa bile worker ayrı process olarak arka planda devam eder. Worker durumu `runs/queue_worker.json`, heartbeat bilgisi `runs/queue_worker_heartbeat.json`, worker logları ise `runs/logs/queue_worker.log` altında tutulur.
+Worker ayrıca **Ayarlar → Kuyruk yönetimi → Queue Worker Başlat** butonuyla başlatılabilir. Streamlit kapatılsa bile worker ayrı process olarak arka planda devam eder. Worker durumu `runs/queue_worker.json`, heartbeat bilgisi `runs/queue_worker_heartbeat.json`, worker logları ise `runs/logs/queue_worker.log` altında tutulur.
+
+**Kuyruk işleyicisi logu** Ayarlar sayfasında okunabilir; **Durumu ve logu yenile** butonu bilgileri yeniden okur. Bu log eğitim job logundan ayrıdır: import/başlatma hataları burada görünür. Log eski denemeleri korur; her yeni başlatmanın önüne tarihli bir ayırıcı eklenir. Başlatma isteği hemen başarı sayılmaz: kendi PID'sine ait güncel heartbeat gelene kadar **Başlatılıyor**, süreç kapandıysa **Hata nedeniyle kapandı**, heartbeat geciktiyse **Yanıt alınamıyor** gösterilir. `Çalışıyor` için son 30 saniyede, ilgili başlatmadan sonra yazılmış heartbeat gerekir. Başlatılıyor/yanıt alınamıyor durumunda ikinci worker açılmaz; durdurma kontrolü kullanılabilir.
 
 Aynı anda iki worker çalıştırılmaz. Worker zaten çalışıyorsa terminalden veya Streamlit üzerinden ikinci worker başlatma isteği reddedilir.
 
 Queued durumundaki yanlış bir job, Job Monitor sayfasında `Queue iptalini onayla` kutusu işaretlenip `Queued Job'ı İptal Et` butonuyla iptal edilebilir. Bu işlem çalışan process'e dokunmaz; yalnızca henüz başlamamış job metadata'sını `cancelled` olarak günceller.
 
 ## Job Monitor
+
+Sol menüde **Veri Setleri** yeni klasör verisini doğrulayıp sabit bölmeyle
+yayımlar. Ayrıntılı şablon ve kimlik kuralları `DATASET_TEMPLATE.md` içindedir.
+Single/Multi KD ekranında dataset/sürüm/bölme ve student/giriş boyutundan sonra
+uyumlu teacher model/run'ları seçilir. Config bu seçimi takip eder. Başlatma
+öncesi uyumluluk kontrolü ve uzun eğitim onayı ayrı kapılardır. KD dry-run bir
+train batch'inde backward ve bir validation batch'i çalıştırır; final sonuç
+satırı/checkpoint üretmez. KD sayfaları da Colab/Kaggle export destekler;
+özel veri ve teacher checkpointleri uzakta mount edilir.
+
+## Job Monitor ayrıntıları
 
 `Job Monitor` sayfası, Streamlit üzerinden başlatılan deneylerin loglarını dosyadan okuyarak gösterir. `Auto-refresh` açıkken sayfa birkaç saniyede bir yenilenir ve seçilen job için son log satırları güncellenir.
 
