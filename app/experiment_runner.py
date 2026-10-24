@@ -15,6 +15,7 @@ from typing import Any
 import psutil
 
 from ui_utils import get_project_root
+from gpu_runtime import GpuBusyError, choose_gpu, discover_gpus
 from src.datasets.dataset_registry import DATASETS, SPLITS_DIR
 from src.training.recovery import load_generation, recovery_metadata, validate_resume
 from src.tracking.experiment_taxonomy import enrich_experiment_metadata
@@ -66,6 +67,16 @@ def load_dashboard_settings() -> dict[str, Any]:
     settings = {**defaults, **loaded}
     settings["max_parallel_jobs"] = max(int(settings.get("max_parallel_jobs", 1)), 1)
     return settings
+
+
+def save_dashboard_settings(max_parallel_jobs: int) -> None:
+    if isinstance(max_parallel_jobs, bool) or not isinstance(max_parallel_jobs, int) or not 1 <= max_parallel_jobs <= 64:
+        raise ValueError("Paralel deney sınırı 1–64 arasında bir tam sayı olmalı.")
+    settings = {**load_dashboard_settings(), "max_parallel_jobs": max_parallel_jobs}
+    SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary = SETTINGS_PATH.with_suffix(".tmp")
+    temporary.write_text(json.dumps(settings, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(SETTINGS_PATH)
 
 
 def build_baseline_command(
@@ -265,6 +276,7 @@ def _start_queued_job(job: dict[str, Any]) -> dict[str, Any]:
     """Start a queued job subprocess and persist running metadata."""
     _ensure_run_dirs()
     job_id = job["job_id"]
+    job.pop("queue_reason", None)
     log_path = LOGS_DIR / f"{job_id}.log"
 
     if job.get("resume_experiment_id"):
@@ -283,17 +295,24 @@ def _start_queued_job(job: dict[str, Any]) -> dict[str, Any]:
         if queued_config != (saved.get("metadata") or {}).get("config"):
             raise ValueError("Resume job config changed after enqueue.")
     environment = os.environ.copy()
+    if "gpu_id" in job:
+        environment["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+        environment["CUDA_VISIBLE_DEVICES"] = str(job["gpu_id"]) if job["gpu_id"] is not None else ""
+    environment["PYTHONUNBUFFERED"] = "1"
     environment["MASTERTHESIS_STOP_FILE"] = str((JOBS_DIR / f"{job_id}.stop").resolve())
     source_paths = [str(get_project_root() / "src"), str(get_project_root())]
     environment["PYTHONPATH"] = os.pathsep.join([*source_paths, environment.get("PYTHONPATH", "")]).rstrip(os.pathsep)
     with log_path.open("a", encoding="utf-8") as log_file:
         process = subprocess.Popen(
-            job["command"],
+            ([sys.executable, "-u", str(Path(__file__).with_name("job_process.py")),
+              "--gpu", str(job["gpu_id"]) if job["gpu_id"] is not None else "cpu", "--", *job["command"]]
+             if "gpu_id" in job else job["command"]),
             cwd=get_project_root(),
             stdout=log_file,
             stderr=subprocess.STDOUT,
             text=True,
             env=environment,
+            start_new_session=os.name != "nt",
         )
 
     job.update(
@@ -311,6 +330,12 @@ def _start_queued_job(job: dict[str, Any]) -> dict[str, Any]:
 def enqueue_job(command: list[str], metadata: dict[str, Any]) -> dict[str, Any]:
     """Create a queued job and start it if a worker slot is available."""
     metadata = enrich_experiment_metadata({**metadata, "command": command})
+    requested = str(metadata.get("gpu_requested", "auto"))
+    if requested not in {"auto", "cpu"} and not requested.isdigit():
+        raise ValueError("Invalid GPU selection.")
+    if requested not in {"auto", "cpu"} and requested not in {str(card["id"]) for card in discover_gpus()}:
+        raise ValueError(f"GPU {requested} bu bilgisayarda bulunamadı.")
+    metadata["gpu_requested"] = requested
     _ensure_run_dirs()
     job_id = metadata.get("job_id") or uuid.uuid4().hex[:12]
     command = list(command)
@@ -358,6 +383,8 @@ def start_job(command: list[str], metadata: dict[str, Any]) -> dict[str, Any]:
 
 def update_job_status_if_finished(job: dict[str, Any]) -> dict[str, Any]:
     """Update a job status if its process is no longer running."""
+    if job.get("execution_origin") == "lab_notebook":
+        return job
     if job.get("status") not in {"running", "stop_requested"}:
         return job
     if _sync_job_context(job):
@@ -373,6 +400,9 @@ def update_job_status_if_finished(job: dict[str, Any]) -> dict[str, Any]:
     if not is_running:
         log_tail = read_log_tail(job.get("log_path", ""), n_lines=300)
         job["status"] = completed_status(log_tail)
+        if "gpu_id" in job and "JOB_EXIT " not in log_tail and job["status"] == "finished":
+            job["status"] = "failed"
+            job["start_error"] = "Çalıştırıcı doğrulanmış çıkış kaydı bırakmadan kapandı."
         if job["status"] in {"failed", "stopped"}:
             _reconcile_mlflow_status(job, "FAILED" if job["status"] == "failed" else "KILLED")
         job["end_time"] = datetime.now().isoformat(timespec="seconds")
@@ -391,7 +421,8 @@ def list_jobs() -> list[dict[str, Any]]:
         except (json.JSONDecodeError, OSError):
             continue
         jobs.append(update_job_status_if_finished(job))
-    return jobs
+    from lab_runs import list_lab_jobs
+    return jobs + list_lab_jobs(get_project_root())
 
 
 def jobs_for_stage(
@@ -419,6 +450,9 @@ def promote_queued_jobs(jobs: list[dict[str, Any]] | None = None) -> list[dict[s
                 jobs.append(json.loads(job_file.read_text(encoding="utf-8")))
             except (json.JSONDecodeError, OSError):
                 continue
+    from lab_runs import list_lab_jobs
+    native_ids = {job.get("job_id") for job in jobs}
+    jobs = [*jobs, *(job for job in list_lab_jobs(get_project_root()) if job.get("job_id") not in native_ids)]
     running_jobs = [update_job_status_if_finished(job) for job in jobs if job.get("status") in {"running", "stop_requested"}]
     running_count = sum(1 for job in running_jobs if job.get("status") in {"running", "stop_requested"})
     available_slots = max(max_parallel - running_count, 0)
@@ -429,9 +463,18 @@ def promote_queued_jobs(jobs: list[dict[str, Any]] | None = None) -> list[dict[s
         [job for job in jobs if job.get("status") == "queued"],
         key=lambda item: item.get("queued_time", ""),
     )
-    for job in queued_jobs[:available_slots]:
+    inventory = discover_gpus()
+    for job in queued_jobs:
+        if available_slots <= 0:
+            break
         try:
+            job["gpu_id"] = choose_gpu(str(job.get("gpu_requested", "auto")), inventory, running_jobs, get_project_root())
             _start_queued_job(job)
+            running_jobs.append(job)
+            available_slots -= 1
+        except GpuBusyError as error:
+            job["queue_reason"] = str(error)
+            _write_job(job)
         except Exception as error:
             job.update({
                 "status": "failed",
@@ -447,7 +490,7 @@ def read_log_tail(log_path: str | Path, n_lines: int = 100) -> str:
     path = Path(log_path)
     if not path.is_absolute():
         path = get_project_root() / path
-    if not path.exists():
+    if not path.is_file():
         return ""
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     return "\n".join(lines[-n_lines:])
@@ -464,7 +507,7 @@ def resolve_log_path(log_path: str | Path) -> Path:
 def get_log_file_info(log_path: str | Path) -> dict[str, Any]:
     """Return compact file metadata for a job log."""
     path = resolve_log_path(log_path)
-    if not path.exists():
+    if not path.is_file():
         return {"exists": False, "size_bytes": 0, "line_count": 0}
     text = path.read_text(encoding="utf-8", errors="replace")
     return {
@@ -530,6 +573,14 @@ def completed_status(log_text: str) -> str:
     """Classify a terminated process, keeping graceful stop distinct from failure."""
     if "TRAINING_STOPPED" in log_text:
         return "stopped"
+    for line in reversed(log_text.splitlines()):
+        if line.startswith("JOB_EXIT "):
+            try:
+                if int(json.loads(line.removeprefix("JOB_EXIT "))["returncode"]) != 0:
+                    return "failed"
+            except (ValueError, KeyError, TypeError):
+                return "failed"
+            break
     return "failed" if log_has_error(log_text) else "finished"
 
 
@@ -552,7 +603,8 @@ def _sync_job_context(job: dict[str, Any]) -> bool:
     """Persist startup context once so long logs cannot hide MLflow/recovery identity."""
     needs_run = not job.get("mlflow_run_id")
     needs_recovery = not job.get("recovery_status_path")
-    if not needs_run and not needs_recovery:
+    needs_source = "gpu_id" in job and not job.get("source_commit")
+    if not needs_run and not needs_recovery and not needs_source:
         return False
     path = resolve_log_path(job.get("log_path", ""))
     if not path.is_file():
@@ -566,6 +618,8 @@ def _sync_job_context(job: dict[str, Any]) -> bool:
                     prefix, fields = "JOB_RUN_CONTEXT ", ("mlflow_run_id", "tracking_uri", "run_name")
                 elif needs_recovery and line.startswith("RECOVERY_CONTEXT "):
                     prefix, fields = "RECOVERY_CONTEXT ", ("status_path", "experiment_id", "attempt_id")
+                elif needs_source and line.startswith("JOB_PROCESS_CONTEXT "):
+                    prefix, fields = "JOB_PROCESS_CONTEXT ", ("source_commit",)
                 if prefix:
                     try:
                         value = json.loads(line.removeprefix(prefix))
@@ -578,14 +632,17 @@ def _sync_job_context(job: dict[str, Any]) -> bool:
                             if value.get(field) is not None:
                                 job[field] = value[field]
                                 changed = True
-                        needs_run = False
+                        if prefix == "JOB_PROCESS_CONTEXT ":
+                            needs_source = False
+                        else:
+                            needs_run = False
                     else:
                         job["recovery_status_path"] = value.get("status_path")
                         job["recovery_experiment_id"] = value.get("experiment_id")
                         job["recovery_attempt_id"] = value.get("attempt_id")
                         changed = True
                         needs_recovery = False
-                if not needs_run and not needs_recovery:
+                if not needs_run and not needs_recovery and not needs_source:
                     break
     except OSError:
         return changed
@@ -623,6 +680,9 @@ def request_epoch_stop(job: dict[str, Any]) -> dict[str, Any]:
     recovery = get_recovery_status(job)
     if not bool(((recovery.get("metadata") or {}).get("recovery") or {}).get("enabled")):
         raise ValueError("Epoch-safe stop requires confirmation that recovery is enabled for this job.")
+    if job.get("execution_origin") == "lab_notebook":
+        from lab_runs import request_notebook_stop
+        return request_notebook_stop(get_project_root(), job)
     stop_path = JOBS_DIR / f"{job['job_id']}.stop"
     stop_path.parent.mkdir(parents=True, exist_ok=True)
     stop_path.write_text("stop after saved epoch\n", encoding="utf-8")
@@ -707,6 +767,8 @@ def enqueue_resume_job(generation: str | Path, backup_dir: str | Path | None = N
 
 def stop_job(job: dict[str, Any], timeout_seconds: int = 10) -> dict[str, Any]:
     """Stop a running job process and persist stopped metadata."""
+    if job.get("execution_origin") == "lab_notebook":
+        raise ValueError("Notebook koşularında yalnızca doğrulanmış epoch-sonu durdurma desteklenir.")
     if job.get("status") not in {"running", "stop_requested"}:
         return job
 

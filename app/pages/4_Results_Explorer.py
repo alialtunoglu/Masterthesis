@@ -455,6 +455,9 @@ def _render_interrupted_jobs(
 
 
 def _render_interrupted_removal_controls(selected_job: dict[str, object]) -> None:
+    if selected_job.get("execution_origin") == "lab_notebook":
+        st.info("Bu notebook kaydı salt okunur izlenir; native job kaldırma akışıyla silinmez.")
+        return
     job_id = str(selected_job.get("job_id", "")).strip()
     if not job_id:
         return
@@ -620,7 +623,7 @@ with tabs[2]:
 with tabs[3]:
     st.subheader("Harici Run İçe Aktarma")
     st.caption(
-        "Colab/Kaggle çıktısını `runs/import_inbox/<bundle_id>/` altına koyun. "
+        "Laboratuvar veya Colab/Kaggle sonuç klasörünü `runs/import_inbox/<klasör_adı>/` altına koyun. "
         "ZIP zorunlu, checkpoint isteğe bağlıdır."
     )
     bundles = scan_import_inbox(get_project_root())

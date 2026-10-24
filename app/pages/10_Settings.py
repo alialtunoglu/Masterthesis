@@ -11,6 +11,9 @@ if str(APP_DIR) not in sys.path:
 
 from experiment_runner import get_queue_worker_status, load_dashboard_settings, start_queue_worker, stop_queue_worker, read_log_tail
 from result_loader import load_dataset_summary, load_split_summaries
+from experiment_runner import save_dashboard_settings
+from gpu_view import render_gpu_overview
+from experiment_runner import list_jobs
 
 st.title("Ayarlar")
 st.caption("Yerel çalışma ortamı ve servisler. Bu sayfayı açmak hiçbir işlemi otomatik başlatmaz.")
@@ -25,6 +28,14 @@ if worker.get("status") in {"failed", "unresponsive"}:
 if notice := st.session_state.pop("queue_worker_notice", None):
     st.info(notice)
 st.caption(f"Aynı anda en fazla {settings['max_parallel_jobs']} eğitim çalışabilir. İşleyiciyi durdurmak kuyruktaki deneyleri silmez.")
+parallel = st.number_input("Toplam paralel deney sınırı", min_value=1, max_value=64,
+                           value=int(settings["max_parallel_jobs"]), key="settings_parallel_jobs")
+st.caption("İki GPU'da birer koşu için 2 seçin. GPU başına bir koşu koruması ayrıca uygulanır; bu değer onu kaldırmaz.")
+confirm_capacity = st.checkbox("Kuyruk kapasitesi değişikliğini onaylıyorum")
+st.caption("İşleyici açıksa sınırı artırmak bekleyen deneylerin başlamasına yol açabilir.")
+if st.button("Kuyruk kapasitesini kaydet", disabled=not confirm_capacity):
+    save_dashboard_settings(int(parallel))
+    st.success("Kuyruk kapasitesi kaydedildi.")
 st.warning("Queue Worker Başlat düğmesi, kuyrukta bekleyen deneylerin eğitimini başlatabilir.")
 left, right = st.columns(2)
 with left:
@@ -53,12 +64,7 @@ with st.expander("Başlatma komutu ve kayıtlı deneyler"):
     st.page_link("pages/7_MLflow_Helper.py", label="MLflow kayıtlarını incele")
 with st.expander("GPU ve Python ortamı"):
     st.code(sys.executable, language="text")
-    try:
-        import torch
-        st.write("GPU: " + (torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CUDA kullanılamıyor"))
-        st.caption(f"PyTorch {torch.__version__} · CUDA {torch.version.cuda or '—'}")
-    except ImportError as error:
-        st.warning(f"PyTorch yüklenemedi: {error}")
+    render_gpu_overview(list_jobs())
 with st.expander("Veri setleri ve sabit bölmeler"):
     summary = load_dataset_summary()
     if summary is not None:

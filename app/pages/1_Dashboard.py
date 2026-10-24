@@ -11,6 +11,8 @@ if str(APP_DIR) not in sys.path:
 
 from experiment_runner import cancel_queued_job, get_queue_worker_status, list_jobs
 from experiment_ui import job_identity, open_queued_job, status_label
+from gpu_view import execution_label, execution_phase, render_gpu_overview
+from experiment_runner import parse_log_progress, read_log_tail
 
 st.title("Genel bakış")
 st.caption("Yeni bir deney hazırlayın, devam eden eğitimi izleyin veya sonuçları karşılaştırın.")
@@ -20,6 +22,10 @@ if notice := st.session_state.pop("overview_queue_notice", None):
     st.success(notice)
 
 jobs = list_jobs()
+render_gpu_overview(jobs)
+uncertain = [job for job in jobs if job.get("execution_origin") == "lab_notebook" and job.get("status") in {"unknown", "interrupted"}]
+if uncertain:
+    st.warning(f"{len(uncertain)} notebook koşusunun durumu doğrulanamadı veya kesintiye uğramış. Deneyler sayfasındaki kayıt ve logları inceleyin; tamamlanmış sayılmadılar.")
 active = [job for job in jobs if job.get("status") in {"running", "queued", "stop_requested"}]
 active.sort(key=lambda job: {"running": 0, "stop_requested": 1, "queued": 2}[job["status"]])
 running = sum(job.get("status") in {"running", "stop_requested"} for job in active)
@@ -43,6 +49,12 @@ for job in active:
         )
         st.write(f"Veri seti: {job.get('dataset', '—')}")
         st.caption(f"Job ID: {job['job_id']}")
+        st.caption(execution_label(job))
+        progress = parse_log_progress(read_log_tail(job.get("log_path", ""), n_lines=100)) if job.get("log_path") else {}
+        phase = execution_phase(job, progress)
+        if progress.get("last_epoch_seen"):
+            phase += f" · Epoch {progress['last_epoch_seen']}/{progress.get('total_epochs') or '—'}"
+        st.caption(phase)
         if st.button("Eğitimi izle", key=f"overview_{job['job_id']}", type="primary"):
             open_queued_job(job)
 if queued:

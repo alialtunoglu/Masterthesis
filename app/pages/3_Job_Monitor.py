@@ -32,6 +32,9 @@ from experiment_runner import (
 from src.tracking.experiment_taxonomy import enrich_experiment_metadata
 from experiment_ui import FAMILY_LABELS, job_identity, open_queued_job, status_label
 from job_filters import render_job_filters
+from gpu_view import execution_label, execution_phase, render_gpu_overview
+from run_transfer import can_export, prepare_run_transfer
+from ui_utils import get_project_root
 
 
 def format_duration(seconds: float | None) -> str:
@@ -147,6 +150,9 @@ if not jobs:
     st.page_link("pages/0_New_Experiment.py", label="Yeni deney oluştur")
     st.stop()
 
+render_gpu_overview(jobs)
+if st.button("Durumu yenile", key="monitor_refresh_now"):
+    st.rerun()
 filtered_jobs = render_job_filters(jobs)
 st.caption(f"{len(filtered_jobs)} / {len(jobs)} deney")
 if not filtered_jobs:
@@ -162,9 +168,19 @@ job = find_job_by_id(filtered_jobs, selected_id)
 st.session_state["job_monitor_selected_job_id"] = selected_id
 st.subheader(job_identity(job))
 st.caption(f"{job.get('dataset', '—')} · Job ID: {selected_id}")
+st.caption(execution_label(job))
+if job.get("monitor_warning"):
+    st.warning(job["monitor_warning"])
 log_path = job.get("log_path") or ""
 log_text = read_log_tail(log_path, n_lines=5000) if log_path else ""
 progress = parse_log_progress(log_text)
+phase = execution_phase(job, progress)
+if phase:
+    st.caption(phase)
+if log_path:
+    log_info = get_log_file_info(log_path)
+    if log_info.get("modified_time"):
+        st.caption("Son log güncellemesi: " + log_info["modified_time"])
 recovery = get_recovery_status(job)
 epoch_label = str(progress.get("last_epoch_seen") or "—")
 if progress.get("last_epoch_seen") and progress.get("total_epochs"):
@@ -207,10 +223,13 @@ if status in {"running", "stop_requested"}:
         elif status == "running":
             st.caption("Epoch sonunda güvenli durdurma için hazır bir kurtarma kaydı gerekli.")
         st.warning("Zorla durdurma, tamamlanmamış epoch veya yedeği kaybettirebilir.")
-        confirm_stop = st.checkbox("Durdurmayı onayla")
-        if st.button("Zorla Durdur", disabled=not confirm_stop):
-            stop_job(job)
-            st.rerun()
+        if job.get("execution_origin") != "lab_notebook":
+            confirm_stop = st.checkbox("Durdurmayı onayla")
+            if st.button("Zorla Durdur", disabled=not confirm_stop):
+                stop_job(job)
+                st.rerun()
+        else:
+            st.caption("Notebook koşusunun kendi süreç kayıtları korunur; bu ekrandan zorla kapatılmaz.")
 elif status == "queued":
     confirm_cancel = st.checkbox("Kuyruktaki deneyi iptal etmeyi onayla")
     if st.button("Kuyruktan çıkar", disabled=not confirm_cancel):
@@ -218,7 +237,7 @@ elif status == "queued":
         st.rerun()
 
 generation = recovery.get("generation") or recovery.get("backup_generation")
-if status in {"stopped", "failed"} and generation:
+if status in {"stopped", "failed"} and generation and job.get("execution_origin") != "lab_notebook":
     st.subheader("Kaydedilmiş eğitimden devam et")
     generation_path = Path(str(generation))
     generations = sorted(generation_path.parent.glob("epoch-*"), reverse=True) if generation_path.parent.is_dir() else [generation_path]
@@ -233,6 +252,25 @@ if status in {"stopped", "failed"} and generation:
             open_queued_job(resumed)
 if status in {"finished", "failed", "stopped", "cancelled"}:
     st.page_link("pages/4_Results_Explorer.py", label="Sonuçlar, artifactler ve güvenli kaldırma")
+
+if can_export(job):
+    st.subheader("Kendi bilgisayarına taşı")
+    st.caption("Yalnızca bu deneyin tamamlanmış sonuç ZIP'i ve model checkpoint'i paketlenir; veri seti veya MLflow veritabanı kopyalanmaz.")
+    if st.button("Taşınacak klasörü hazırla ve göster", key=f"transfer_{selected_id}"):
+        try:
+            with st.spinner("Sonuçlar ve checkpoint bütünlüğü doğrulanıyor..."):
+                transfer = prepare_run_transfer(get_project_root(), job)
+            st.session_state[f"transfer_ready_{selected_id}"] = transfer
+        except (OSError, ValueError, KeyError) as error:
+            st.session_state.pop(f"transfer_ready_{selected_id}", None)
+            st.error(f"Transfer hazırlanamadı: {error}")
+    if transfer := st.session_state.get(f"transfer_ready_{selected_id}"):
+        st.success("Bu klasörün tamamını kopyalayın; ZIP ve .pt dosyasını birlikte tutun.")
+        st.code(transfer["folder"], language="text")
+        st.write("Kendi bilgisayarınızdaki proje içinde hedef klasör:")
+        st.code(transfer["inbox_folder"], language="text")
+        st.caption("Ardından sonuç paketi içe aktarma sayfasını açın. Aynı paket tekrar içe aktarılırsa yeni bir deney oluşturulmaz.")
+        st.page_link("pages/4_Results_Explorer.py", label="Sonuçlar → İçe Aktar sekmesi")
 
 with st.expander("Eğitim logu"):
     n_lines = st.slider("Gösterilecek log satırı", 20, 1000, 100, 20)

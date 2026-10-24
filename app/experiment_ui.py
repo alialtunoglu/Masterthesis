@@ -18,7 +18,8 @@ FAMILY_LABELS = {"cnn": "CNN", "vision_transformer": "ViT"}
 def status_label(status):
     return {"queued": "Kuyrukta", "running": "Çalışıyor", "finished": "Tamamlandı",
             "failed": "Başarısız", "stopped": "Durduruldu", "cancelled": "İptal edildi",
-            "stop_requested": "Durdurma bekleniyor"}.get(status, str(status or "Bilinmiyor"))
+            "stop_requested": "Durdurma bekleniyor", "interrupted": "Kesintiye uğradı",
+            "unknown": "Durum doğrulanamadı"}.get(status, str(status or "Bilinmiyor"))
 
 
 def job_identity(job):

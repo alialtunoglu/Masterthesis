@@ -15,6 +15,7 @@ from ui_utils import get_project_root
 from src.models.model_catalog import get_model_family, get_model_spec
 from src.training.experiment_presets import list_presets
 from src.training.experiment_config import resolve_experiment_config
+from gpu_view import render_gpu_selection
 
 
 def render_standard_launcher(stage, datasets, models, *, unified=False):
@@ -88,6 +89,7 @@ def render_standard_launcher(stage, datasets, models, *, unified=False):
         val_limit = limits[1].number_input("max_val_batches", min_value=0, value=0, key=f"{scope}_val_limit")
         test_limit = limits[2].number_input("max_test_batches", min_value=0, value=0, key=f"{scope}_test_limit")
     recovery_enabled, backup_dir = render_recovery_settings(defaults.get("recovery"), key=scope)
+    gpu_requested = render_gpu_selection(scope, device=defaults.get("device", "auto"))
     builder = build_baseline_command if stage == "baseline" else build_teacher_command
 
     runtime_payload = {**defaults, "stage": stage, "dataset_name": dataset, "model_name": model,
@@ -131,6 +133,7 @@ def render_standard_launcher(stage, datasets, models, *, unified=False):
             launch_command[launch_command.index("--config") + 1] = snapshot
             job = start_job(launch_command, {"stage": stage, "dataset": dataset, "model": model,
                                             "job_id": job_id, "dataset_ref": dataset_ref,
+                                            "gpu_requested": gpu_requested,
                                             "config": snapshot, "dry_run": bool(dry_clicked)})
             open_queued_job(job)
     with st.expander("Colab / Kaggle için notebook indir"):

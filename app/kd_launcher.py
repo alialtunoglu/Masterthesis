@@ -19,13 +19,17 @@ from src.training.multi_kd_config import load_multi_kd_config
 from src.training.teacher_catalog import find_compatible_teacher_runs, validate_teacher_selection
 from src.training.kd_features import default_feature_layer
 from src.training.multi_kd_aggregation import resolve_teacher_weights
+from gpu_view import render_gpu_selection
 
 KD_LABELS = {"logit_based": "Logit / Response-based", "feature_based": "Feature-based", "relation_based": "Relation-based"}
 
 
 @st.cache_data(ttl=30, show_spinner=False)
 def teacher_candidates(root, dataset, ref, student, image_size):
-    return find_compatible_teacher_runs(root, ref, student, "logit_based", dataset_name=dataset, image_size=image_size)
+    from lab_runs import portable_teacher_candidates
+    rows = find_compatible_teacher_runs(root, ref, student, "logit_based", dataset_name=dataset, image_size=image_size)
+    known = {str(row["mlflow_run_id"]) for row in rows}
+    return rows + [row for row in portable_teacher_candidates(root, dataset, ref, image_size) if str(row["mlflow_run_id"]) not in known]
 
 
 def _select(label, values, default):
@@ -35,6 +39,7 @@ def _select(label, values, default):
 def _teacher_input(row):
     return {"model_name": row["model_name"], "run_id": str(row["mlflow_run_id"]),
             "checkpoint_path": str(row["checkpoint_path"]), "checkpoint_sha256": row["checkpoint_sha256"],
+            "portable_input": row.get("_portable_teacher_input"),
             "best_val_macro_f1": float(row["best_val_macro_f1"]) if pd.notna(row.get("best_val_macro_f1")) else None}
 
 
@@ -138,6 +143,7 @@ def render_kd_launcher(*, multi=False, unified=False):
         index = st.selectbox(f"Teacher run · {model}", range(len(rows)),
                              format_func=lambda index: f"{rows[index]['mlflow_run_id']} · val F1 {float(rows[index].get('best_val_macro_f1') or 0):.4f}")
         chosen.append(_teacher_input(rows[index]))
+    portable_inputs = [item.pop("portable_input", None) for item in chosen]
     kd_type = st.selectbox("KD türü", list(KD_LABELS), format_func=KD_LABELS.get)
     aggregation = st.selectbox("Aggregation", ["uniform", "validation_weighted", "manual"]) if multi else None
     presets = list_presets(stage, kd_type=kd_type)
@@ -173,6 +179,12 @@ def render_kd_launcher(*, multi=False, unified=False):
             st.caption("Dosya yüklenene kadar genel ayarlar gösterilir; eğitim başlatılamaz.")
             enough = False
     payload = compose_preset(payload, ref, {"stage": stage, "dataset_name": dataset, "kd_type": kd_type})
+    # Build portable provenance from current selections, never from an uploaded template.
+    payload["teacher_inputs"] = []
+    if any(portable_inputs):
+        payload["teacher_inputs"] = [portable or {**item, "dataset_name": dataset, "dataset_ref": ref,
+            "class_names": runtime["class_names"], "status": "completed", "image_size": int(image_size)}
+            for item, portable in zip(chosen, portable_inputs)]
     payload["experiment"]["seed"] = st.number_input("Eğitim seed", 0, 2147483647, int(payload["experiment"].get("seed", 42)))
     # Model and run identities come from the current selection, never an uploaded template.
     fallback = sorted(CNN_TEACHER_MODELS | VISION_TRANSFORMER_TEACHER_MODELS)
@@ -269,6 +281,7 @@ def render_kd_launcher(*, multi=False, unified=False):
             st.dataframe(profiles, hide_index=True)
             st.caption("Tahmini FLOPs = 2 × MACs. Teacher ve adapter maliyetleri student inference modeline dahil değildir.")
     confirmed = st.checkbox("Uzun süren eğitimi onaylıyorum")
+    gpu_requested = render_gpu_selection(stage, device=payload["training"].get("device", "auto"))
     cols = st.columns(2)
     train_clicked = cols[0].button("Multi-KD Eğitimini Başlat" if multi else "KD Eğitimini Başlat", type="primary", disabled=not valid or not confirmed)
     dry_clicked = cols[1].button("Multi-KD Dry Run Başlat" if multi else "KD Dry Run Başlat", disabled=not valid)
@@ -280,6 +293,7 @@ def render_kd_launcher(*, multi=False, unified=False):
         exp = payload["experiment"]
         command = build_multi_kd_command(snapshot, dry_run=bool(dry_clicked)) if multi else build_kd_command(snapshot, exp["teacher_run_id"], exp["teacher_checkpoint_path"], dry_run=bool(dry_clicked))
         metadata = {"job_id": job_id, "stage": stage, "dataset": dataset, "dataset_ref": ref, "model": student, "student_model": student,
+                    "gpu_requested": gpu_requested,
                     "kd_type": kd_type, "config": snapshot, "dry_run": bool(dry_clicked)}
         if multi:
             metadata.update(teacher_models=selected_models, teacher_run_ids=[item["run_id"] for item in payload["teachers"]],
