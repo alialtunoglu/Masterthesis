@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.metrics import confusion_matrix
 
-from utils.io import ensure_dir
+from src.utils.io import ensure_dir
 
 
 def save_confusion_matrix_artifacts(

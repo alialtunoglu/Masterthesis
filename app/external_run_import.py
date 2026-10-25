@@ -255,7 +255,8 @@ def _default_register_run(manifest: dict, paths: list[Path]) -> str:
     import mlflow
 
     row = manifest["result_row"]
-    mlflow.set_tracking_uri(str(row.get("tracking_uri") or "sqlite:///mlflow.db"))
+    from src.tracking.mlflow_tracker import resolve_tracking_uri
+    mlflow.set_tracking_uri(resolve_tracking_uri(str(row.get("tracking_uri") or "sqlite:///mlflow.db")))
     mlflow.set_experiment(EXPERIMENT_NAMES[manifest["stage"]])
     tags = {
         "execution_origin": "external",

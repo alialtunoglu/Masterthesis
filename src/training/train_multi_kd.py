@@ -15,23 +15,18 @@ from typing import Any
 import pandas as pd
 import torch
 
-CURRENT_DIR = Path(__file__).resolve().parent
-SRC_DIR = CURRENT_DIR.parent
-for import_path in (SRC_DIR, CURRENT_DIR):
-    if str(import_path) not in sys.path:
-        sys.path.insert(0, str(import_path))
 
-from datasets.dataloaders import create_dataloaders
-from datasets.dataset_registry import DATASETS, PROJECT_ROOT, SPLITS_DIR
-from datasets.dataset_registry import DatasetRef
-from datasets.dataset_runtime import resolve_dataset_runtime, verify_dataset_content
-from training.experiment_config import resolve_experiment_config
-from training.teacher_catalog import validate_teacher_selection
-from evaluation.metrics import compute_per_class_metrics
-from evaluation.reports import save_confusion_matrix_artifacts, save_learning_curves
-from models.model_factory import create_model
-from models.model_info import get_model_compute_dict, get_model_summary_dict
-from tracking.mlflow_tracker import (
+from src.datasets.dataloaders import create_dataloaders
+from src.datasets.dataset_registry import DATASETS, PROJECT_ROOT, SPLITS_DIR
+from src.datasets.dataset_registry import DatasetRef
+from src.datasets.dataset_runtime import resolve_dataset_runtime, verify_dataset_content
+from src.training.experiment_config import resolve_experiment_config
+from src.training.teacher_catalog import validate_teacher_selection
+from src.evaluation.metrics import compute_per_class_metrics
+from src.evaluation.reports import save_confusion_matrix_artifacts, save_learning_curves
+from src.models.model_factory import create_model
+from src.models.model_info import get_model_compute_dict, get_model_summary_dict
+from src.tracking.mlflow_tracker import (
     end_run,
     log_artifact,
     log_metrics,
@@ -40,24 +35,24 @@ from tracking.mlflow_tracker import (
     setup_mlflow,
     start_run,
 )
-from training.kd_features import FeatureCapture, infer_feature_shapes, default_feature_layer
-from training.kd_trainer import evaluate_student, freeze_teacher
-from training.multi_kd_aggregation import resolve_teacher_weights
-from training.multi_kd_config import (
+from src.training.kd_features import FeatureCapture, infer_feature_shapes, default_feature_layer
+from src.training.kd_trainer import evaluate_student, freeze_teacher
+from src.training.multi_kd_aggregation import resolve_teacher_weights
+from src.training.multi_kd_config import (
     MultiKDConfig,
     load_multi_kd_config,
     validate_multi_kd_config,
 )
-from training.multi_kd_strategies import create_multi_teacher_strategy
-from training.multi_kd_trainer import (
+from src.training.multi_kd_strategies import create_multi_teacher_strategy
+from src.training.multi_kd_trainer import (
     fit_multi_teacher_kd,
     train_multi_teacher_epoch,
 )
-from training.optimization import create_optimizer, create_scheduler
-from training.train_kd import load_teacher_checkpoint, model_latency_ms, select_device
-from utils.io import ensure_dir, save_json, upsert_result_row
-from utils.seed import set_seed
-from training.recovery import (add_recovery_arguments, create_recovery, recovery_settings,
+from src.training.optimization import create_optimizer, create_scheduler
+from src.training.train_kd import load_teacher_checkpoint, model_latency_ms, select_device
+from src.utils.io import ensure_dir, save_json, upsert_result_row
+from src.utils.seed import set_seed
+from src.training.recovery import (add_recovery_arguments, create_recovery, recovery_settings,
                                mark_recovery, TrainingStopped)
 
 

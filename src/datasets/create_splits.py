@@ -17,8 +17,8 @@ for path in (SRC_DIR, CURRENT_DIR):
 from dataset_registry import DATASETS, PROJECT_ROOT, SEED, SPLIT_RATIO, SPLITS_DIR
 from imagefolder_utils import collect_imagefolder_samples
 from plantpathology_utils import collect_plantpathology_samples
-from utils.io import ensure_dir, save_json
-from utils.seed import set_seed
+from src.utils.io import ensure_dir, save_json
+from src.utils.seed import set_seed
 
 
 def largest_remainder_counts(total: int, ratios: dict[str, float]) -> dict[str, int]:

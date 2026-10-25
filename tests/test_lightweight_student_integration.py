@@ -141,7 +141,7 @@ for name in ('shufflenet_v2_x0_5', 'micronet_m0'):
     assert widget('selectbox', 'Scheduler').value == 'cosine'
     assert widget('number_input', 'Early stopping patience').value == 7
     assert widget('button', 'Eğitimi Başlat').disabled
-    command = next(w.value for w in app.code if 'src/training/train_baseline.py' in w.value)
+    command = next(w.value for w in app.code if 'src.training.train_baseline' in w.value)
     assert '--model ' + name in command
     assert '--dataset plantpathology2021_clean' in command
 print('LIGHT_STUDENTS_UI_OK; NO_TRAINING_CLICKED')

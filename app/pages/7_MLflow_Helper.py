@@ -12,7 +12,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from result_loader import mlflow_experiment_overview
+from app.result_loader import mlflow_experiment_overview
 
 TRACKING_URI = "sqlite:///mlflow.db"
 MLFLOW_URL = "http://127.0.0.1:5000"

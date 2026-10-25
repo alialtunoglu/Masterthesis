@@ -9,11 +9,11 @@ from typing import Any, Mapping
 
 from .experiment_config import validate_dataset_selection
 try:
-    from models.model_catalog import STUDENT_MODELS, CNN_TEACHER_MODELS, VISION_TRANSFORMER_TEACHER_MODELS
+    from src.models.model_catalog import STUDENT_MODELS, CNN_TEACHER_MODELS, VISION_TRANSFORMER_TEACHER_MODELS
 except ModuleNotFoundError:
     from src.models.model_catalog import STUDENT_MODELS, CNN_TEACHER_MODELS, VISION_TRANSFORMER_TEACHER_MODELS
 
-from training.kd_config import (
+from src.training.kd_config import (
     SUPPORTED_MONITORS,
     SUPPORTED_OPTIMIZERS,
     SUPPORTED_SCHEDULERS,

@@ -15,8 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 
 class ExperimentUITests(unittest.TestCase):
     def test_overview_queue_removal_preserves_job_and_artifacts(self):
-        import experiment_runner as runner
-
+        import app.experiment_runner as runner
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             jobs = root / "jobs"
@@ -41,7 +40,7 @@ class ExperimentUITests(unittest.TestCase):
                 self.assertFalse(any(button.key == "overview_cancel_waiting-fixture" for button in app.button))
 
     def test_overview_recent_jobs_are_collapsed(self):
-        with patch("experiment_runner.list_jobs", return_value=[
+        with patch("app.experiment_runner.list_jobs", return_value=[
             {"job_id": "finished-fixture", "status": "finished", "model": "resnet18"}
         ]):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
@@ -54,8 +53,8 @@ class ExperimentUITests(unittest.TestCase):
     def test_overview_emphasizes_running_job_and_discloses_queued_jobs_separately(self):
         jobs = [{"job_id": "waiting-fixture", "status": "queued", "model": "resnet18"},
                 {"job_id": "running-fixture", "status": "running", "model": "mobilenet_v3_small"}]
-        with patch("experiment_runner.list_jobs", return_value=jobs), \
-                patch("experiment_runner.get_queue_worker_status", return_value={"running": True}):
+        with patch("app.experiment_runner.list_jobs", return_value=jobs), \
+                patch("app.experiment_runner.get_queue_worker_status", return_value={"running": True}):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
         self.assertFalse(app.exception)
         follow = next((button for button in app.button if button.label == "Eğitimi izle"), None)
@@ -72,7 +71,7 @@ class ExperimentUITests(unittest.TestCase):
 
     def test_overview_does_not_call_stop_requested_job_running(self):
         job = {"job_id": "stopping-fixture", "status": "stop_requested", "model": "resnet18"}
-        with patch("experiment_runner.list_jobs", return_value=[job]):
+        with patch("app.experiment_runner.list_jobs", return_value=[job]):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
         self.assertFalse(app.exception)
         self.assertTrue(any("Durdurma bekleniyor" in item.value for item in app.markdown))
@@ -83,8 +82,8 @@ class ExperimentUITests(unittest.TestCase):
                 for job_id, status in [("queue-a", "queued"), ("stopping", "stop_requested"),
                                        ("queue-b", "queued"), ("running-a", "running"),
                                        ("running-b", "running"), ("done", "finished")]]
-        with patch("experiment_runner.list_jobs", return_value=jobs), \
-                patch("experiment_runner.get_queue_worker_status", return_value={"running": True}):
+        with patch("app.experiment_runner.list_jobs", return_value=jobs), \
+                patch("app.experiment_runner.get_queue_worker_status", return_value={"running": True}):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
         self.assertFalse(app.exception)
         displayed = [caption.value.split("Job ID: ")[1] for caption in app.caption
@@ -94,7 +93,7 @@ class ExperimentUITests(unittest.TestCase):
     def test_overview_recent_jobs_use_time_not_random_id_order(self):
         jobs = [{"job_id": "zz-old", "queued_time": "2026-01-01T00:00:00", "status": "finished", "model": "resnet18"},
                 {"job_id": "aa-new", "queued_time": "2026-10-01T00:00:00", "status": "finished", "model": "resnet18"}]
-        with patch("experiment_runner.list_jobs", return_value=jobs):
+        with patch("app.experiment_runner.list_jobs", return_value=jobs):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
         captions = [caption.value for caption in app.caption if "Job ID:" in caption.value]
         self.assertIn("aa-new", captions[0])
@@ -112,8 +111,8 @@ class ExperimentUITests(unittest.TestCase):
     def test_monitor_secondary_filters_are_in_a_collapsed_group(self):
         job = {"job_id": "filter-fixture", "status": "finished", "stage": "baseline",
                "dataset": "plantvillage", "model": "resnet18", "log_path": "runs/logs/ui-fixture-missing.log"}
-        with patch("experiment_runner.list_jobs", return_value=[job]), \
-             patch("experiment_runner.get_recovery_status", return_value={}):
+        with patch("app.experiment_runner.list_jobs", return_value=[job]), \
+             patch("app.experiment_runner.get_recovery_status", return_value={}):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
             app.switch_page("pages/3_Job_Monitor.py").run(timeout=60)
         groups = [group for group in app.expander
@@ -125,10 +124,10 @@ class ExperimentUITests(unittest.TestCase):
     def test_launch_handoff_opens_the_queued_job_without_starting_a_process(self):
         job = {"job_id": "new-queued-fixture", "status": "queued", "dataset": "appleleaf9",
                "model": "mobilenet_v3_small", "stage": "baseline", "log_path": "runs/logs/ui-fixture-missing.log"}
-        with patch("standard_launcher.start_job", return_value=job) as start, \
-             patch("standard_launcher.save_job_config_snapshot", return_value="runs/configs/ui-fixture.json"), \
-             patch("experiment_runner.list_jobs", return_value=[job]), \
-             patch("experiment_runner.get_recovery_status", return_value={}):
+        with patch("app.standard_launcher.start_job", return_value=job) as start, \
+             patch("app.standard_launcher.save_job_config_snapshot", return_value="runs/configs/ui-fixture.json"), \
+             patch("app.experiment_runner.list_jobs", return_value=[job]), \
+             patch("app.experiment_runner.get_recovery_status", return_value={}):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
             app.switch_page("pages/2_Baseline_Experiments.py").run(timeout=60)
             next(item for item in app.checkbox if item.label == "Uzun süren eğitimi onaylıyorum").check().run(timeout=60)
@@ -139,7 +138,7 @@ class ExperimentUITests(unittest.TestCase):
         self.assertFalse(start.call_args.args[1]["dry_run"])
 
     def test_compact_results_put_model_and_scores_before_identifiers(self):
-        from experiment_ui import compact_results
+        from app.experiment_ui import compact_results
 
         frame = pd.DataFrame([{"run_name": "long-id", "model_name": "resnet50", "test_accuracy": .9,
                                "test_macro_f1": .8, "mlflow_run_id": "id"}])
@@ -147,7 +146,7 @@ class ExperimentUITests(unittest.TestCase):
         self.assertIn("run_name", frame)
 
     def test_student_options_exclude_teacher_only_models(self):
-        from comparison_view import student_options
+        from app.comparison_view import student_options
 
         runs = [{"role": "teacher", "student": "densenet201"},
                 {"role": "baseline", "student": "mobilenet_v3_small"},
@@ -155,11 +154,11 @@ class ExperimentUITests(unittest.TestCase):
         self.assertEqual(student_options(runs), ["mobilenet_v3_large", "mobilenet_v3_small"])
 
     def test_queue_handoff_keeps_the_explicit_job_selected(self):
-        from experiment_ui import open_queued_job
+        from app.experiment_ui import open_queued_job
 
-        with patch("experiment_ui.st.session_state", {}), patch("experiment_ui.st.switch_page") as switch:
+        with patch("app.experiment_ui.st.session_state", {}), patch("app.experiment_ui.st.switch_page") as switch:
             open_queued_job({"job_id": "queued-id"})
-            from experiment_ui import st
+            from app.experiment_ui import st
             self.assertEqual(st.session_state["job_monitor_selected_job_id"], "queued-id")
             self.assertFalse(st.session_state["monitor_follow_running"])
             switch.assert_called_once_with("pages/3_Job_Monitor.py")
@@ -185,8 +184,8 @@ class ExperimentUITests(unittest.TestCase):
     def test_finished_job_has_no_stop_or_cancel_controls(self):
         job = {"job_id": "finished-fixture", "status": "finished", "stage": "baseline",
                "dataset": "plantvillage", "model": "resnet18", "log_path": "runs/logs/ui-fixture-missing.log"}
-        with patch("experiment_runner.list_jobs", return_value=[job]), \
-             patch("experiment_runner.get_recovery_status", return_value={}):
+        with patch("app.experiment_runner.list_jobs", return_value=[job]), \
+             patch("app.experiment_runner.get_recovery_status", return_value={}):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
             app.switch_page("pages/3_Job_Monitor.py").run(timeout=60)
         self.assertFalse(app.exception)
@@ -196,9 +195,9 @@ class ExperimentUITests(unittest.TestCase):
     def test_baseline_monitor_does_not_render_missing_distillation_metrics(self):
         job = {"job_id": "metrics-fixture", "status": "finished", "stage": "baseline",
                "dataset": "plantvillage", "model": "resnet18", "log_path": "runs/logs/ui-fixture-missing.log"}
-        with patch("experiment_runner.list_jobs", return_value=[job]), \
-             patch("experiment_runner.get_recovery_status", return_value={}), \
-             patch("experiment_runner.read_log_tail", return_value="EPOCH_SUMMARY epoch=1/5 train_loss=0.5 val_macro_f1=0.8"):
+        with patch("app.experiment_runner.list_jobs", return_value=[job]), \
+             patch("app.experiment_runner.get_recovery_status", return_value={}), \
+             patch("app.experiment_runner.read_log_tail", return_value="EPOCH_SUMMARY epoch=1/5 train_loss=0.5 val_macro_f1=0.8"):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
             app.switch_page("pages/3_Job_Monitor.py").run(timeout=60)
         self.assertFalse(app.exception)
@@ -218,7 +217,7 @@ class ExperimentUITests(unittest.TestCase):
             {"dataset_name": "appleleaf9", "model_name": "resnet18", "test_macro_f1": .8, "test_accuracy": .85},
             {"dataset_name": "plantvillage", "model_name": "resnet18", "test_macro_f1": .99, "test_accuracy": .99},
         ])
-        with patch("result_loader.load_csv_if_exists", return_value=frame):
+        with patch("app.result_loader.load_csv_if_exists", return_value=frame):
             app = AppTest.from_file("app/pages/4_Results_Explorer.py").run(timeout=60)
         self.assertFalse(app.exception)
         self.assertEqual(app.dataframe[0].value["test_macro_f1"].tolist(), [.8])

@@ -6,8 +6,8 @@ from pathlib import Path
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
-import experiment_runner as runner
-from experiment_removal import _active_resume_claims
+import app.experiment_runner as runner
+from app.experiment_removal import _active_resume_claims
 
 
 class RecoveryJobTests(unittest.TestCase):
@@ -26,7 +26,7 @@ class RecoveryJobTests(unittest.TestCase):
 
     def test_epoch_stop_writes_job_specific_flag(self):
         job = {"job_id": "abc", "status": "running"}
-        with mock.patch("experiment_runner.get_recovery_status", return_value={
+        with mock.patch("app.experiment_runner.get_recovery_status", return_value={
             "metadata": {"recovery": {"enabled": True}}
         }):
             updated = runner.request_epoch_stop(job)
@@ -35,7 +35,7 @@ class RecoveryJobTests(unittest.TestCase):
 
     def test_epoch_stop_rejects_job_without_recovery(self):
         job = {"job_id": "abc", "status": "running"}
-        with mock.patch("experiment_runner.get_recovery_status", return_value={
+        with mock.patch("app.experiment_runner.get_recovery_status", return_value={
             "metadata": {"recovery": {"enabled": False}}
         }):
             with self.assertRaisesRegex(ValueError, "recovery is enabled"):
@@ -60,17 +60,18 @@ class RecoveryJobTests(unittest.TestCase):
         client.return_value.set_terminated.assert_called_once_with("run", status="KILLED")
         self.assertEqual(job["mlflow_run_id"], "run")
 
-    @mock.patch("experiment_runner.subprocess.Popen")
+    @mock.patch("app.experiment_runner.subprocess.Popen")
     def test_worker_passes_stop_file_and_src_first(self, popen):
         popen.return_value.pid = 10
         job = {"job_id": "abc", "command": ["python", "train.py"], "status": "queued"}
         runner._start_queued_job(job)
         environment = popen.call_args.kwargs["env"]
         self.assertEqual(environment["MASTERTHESIS_STOP_FILE"], str((runner.JOBS_DIR / "abc.stop").resolve()))
-        self.assertEqual(environment["PYTHONPATH"].split(runner.os.pathsep)[0], str((runner.get_project_root() / "src").resolve()))
+        self.assertNotIn("PYTHONPATH", environment)
+        self.assertEqual(environment["MASTERTHESIS_PROJECT_ROOT"], str(runner.get_project_root()))
 
-    @mock.patch("experiment_runner.subprocess.Popen")
-    @mock.patch("experiment_runner._validate_resume_generation", side_effect=ValueError("Resume mismatch: teacher_hashes"))
+    @mock.patch("app.experiment_runner.subprocess.Popen")
+    @mock.patch("app.experiment_runner._validate_resume_generation", side_effect=ValueError("Resume mismatch: teacher_hashes"))
     def test_resume_mismatch_is_rejected_before_process_start(self, _validate, popen):
         job = {"job_id": "abc", "command": ["python", "train.py"], "status": "queued",
                "resume_from": str(self.root / "epoch-000001"), "resume_experiment_id": "exp"}
@@ -78,8 +79,8 @@ class RecoveryJobTests(unittest.TestCase):
             runner._start_queued_job(job)
         popen.assert_not_called()
 
-    @mock.patch("experiment_runner.subprocess.Popen")
-    @mock.patch("experiment_runner._validate_resume_generation")
+    @mock.patch("app.experiment_runner.subprocess.Popen")
+    @mock.patch("app.experiment_runner._validate_resume_generation")
     def test_changed_resume_job_snapshot_is_rejected_before_process_start(self, validate, popen):
         validate.return_value = {"metadata": {"experiment_id": "exp", "config": {"epochs": 2}}}
         config = self.root / "runs/configs/abc.json"
@@ -92,10 +93,10 @@ class RecoveryJobTests(unittest.TestCase):
             runner._start_queued_job(job)
         popen.assert_not_called()
 
-    @mock.patch("experiment_runner._start_queued_job", side_effect=ValueError("Resume mismatch"))
+    @mock.patch("app.experiment_runner._start_queued_job", side_effect=ValueError("Resume mismatch"))
     def test_worker_marks_invalid_queued_resume_failed_without_crashing(self, _start):
         job = {"job_id": "abc", "command": ["python", "train.py"], "status": "queued", "queued_time": "1"}
-        with mock.patch("experiment_runner.load_dashboard_settings", return_value={"max_parallel_jobs": 1}):
+        with mock.patch("app.experiment_runner.load_dashboard_settings", return_value={"max_parallel_jobs": 1}):
             runner.promote_queued_jobs([job])
         self.assertEqual(job["status"], "failed")
         self.assertIn("Resume mismatch", job["start_error"])
@@ -123,12 +124,12 @@ class RecoveryJobTests(unittest.TestCase):
         source.write_text('{"dataset_name":"changed"}', encoding="utf-8")
         self.assertEqual(json.loads(snapshot.read_text(encoding="utf-8"))["dataset_name"], "appleleaf9")
 
-    @mock.patch("experiment_runner._validate_resume_generation")
+    @mock.patch("app.experiment_runner._validate_resume_generation")
     def test_resume_queues_locked_original_config_and_stage_cli(self, validate):
         validate.return_value = {"metadata": {"experiment_id": "exp", "attempt_id": "old",
             "stage": "baseline", "config": {"dataset": "d", "model": "m"}}}
         job = runner.enqueue_resume_job(self.root / "epoch-000001")
-        self.assertIn("src/training/train_baseline.py", job["command"])
+        self.assertEqual(job["command"][1:3], ["-m", "src.training.train_baseline"])
         self.assertEqual(job["command"][-2:], ["--resume-from", str(self.root / "epoch-000001")])
         config = json.loads((self.root / job["config"]).read_text(encoding="utf-8"))
         self.assertEqual(config, {"dataset": "d", "model": "m"})

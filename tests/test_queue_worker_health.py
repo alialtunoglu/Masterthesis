@@ -14,9 +14,7 @@ from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "app"))
-import experiment_runner as runner
-
-
+import app.experiment_runner as runner
 class QueueWorkerHealthTests(unittest.TestCase):
     def isolated_paths(self, root):
         stack = ExitStack()
@@ -79,9 +77,9 @@ class QueueWorkerHealthTests(unittest.TestCase):
                 self.assertEqual(result["status"], "starting")
                 command = spawn.call_args.args[0]
                 self.assertIn("-u", command)
-                paths = spawn.call_args.kwargs["env"]["PYTHONPATH"].split(os.pathsep)
-                self.assertIn(str(Path(directory)), paths)
-                self.assertIn(str(Path(directory) / "src"), paths)
+                self.assertEqual(command[-2:], ["-m", "app.queue_worker"])
+                self.assertNotIn("PYTHONPATH", spawn.call_args.kwargs["env"])
+                self.assertEqual(spawn.call_args.kwargs["env"]["MASTERTHESIS_PROJECT_ROOT"], str(Path(directory)))
                 again = runner.start_queue_worker()
                 self.assertFalse(again["started"])
                 self.assertEqual(spawn.call_count, 1)
@@ -112,7 +110,7 @@ class QueueWorkerHealthTests(unittest.TestCase):
 import sys
 from pathlib import Path
 sys.path.insert(0, {str(ROOT / 'app')!r})
-import experiment_runner as runner
+import app.experiment_runner as runner
 root = Path({str(root)!r})
 runner.get_project_root = lambda: root
 runner.RUNS_DIR = root / 'runs'
@@ -122,7 +120,7 @@ runner.QUEUE_WORKER_STATE_PATH = root / 'runs/queue_worker.json'
 runner.QUEUE_WORKER_HEARTBEAT_PATH = root / 'runs/queue_worker_heartbeat.json'
 runner.QUEUE_WORKER_LOG_PATH = root / 'runs/logs/queue_worker.log'
 runner.SETTINGS_PATH = root / 'app/dashboard_settings.json'
-import queue_worker
+import app.queue_worker as queue_worker
 queue_worker.main()
 """
             (root / "app/queue_worker.py").write_text(wrapper, encoding="utf-8")
@@ -145,7 +143,7 @@ queue_worker.main()
             self.assertEqual(runner.get_queue_worker_status()["status"], "stopped")
 
     def test_worker_loop_failure_records_failed_heartbeat(self):
-        import queue_worker
+        import app.queue_worker as queue_worker
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             state, heartbeat = root / "worker.json", root / "heartbeat.json"
@@ -170,9 +168,9 @@ from unittest.mock import patch
 from streamlit.testing.v1 import AppTest
 state = {'running': False, 'process_alive': False, 'status': 'failed', 'heartbeat': {},
          'log_path': 'runs/logs/queue_worker.log'}
-with patch('experiment_runner.get_queue_worker_status', return_value=state), \
-     patch('experiment_runner.read_log_tail', return_value="ModuleNotFoundError: No module named 'src'"), \
-     patch('experiment_runner.start_queue_worker', side_effect=AssertionError('unexpected launch')):
+with patch('app.experiment_runner.get_queue_worker_status', return_value=state), \
+     patch('app.experiment_runner.read_log_tail', return_value="ModuleNotFoundError: No module named 'src'"), \
+     patch('app.experiment_runner.start_queue_worker', side_effect=AssertionError('unexpected launch')):
     app = AppTest.from_file('app/streamlit_app.py').run(timeout=60)
     app.switch_page('pages/10_Settings.py').run(timeout=60)
     assert not app.exception

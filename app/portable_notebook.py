@@ -301,11 +301,8 @@ recovery_output.mkdir(parents=True, exist_ok=True)
 environment['MASTERTHESIS_BACKUP_DIR'] = str(recovery_output.resolve())
 if resume_from:
     environment['MASTERTHESIS_RESUME_FROM'] = resume_from
-project_src = str(Path('src').resolve())
-existing_pythonpath = environment.get('PYTHONPATH')
-environment['PYTHONPATH'] = (
-    project_src if not existing_pythonpath else project_src + os.pathsep + existing_pythonpath
-)
+environment.pop('PYTHONPATH', None)
+environment['MASTERTHESIS_PROJECT_ROOT'] = str(Path.cwd().resolve())
 environment['PYTHONUNBUFFERED'] = '1'
 process = subprocess.Popen(
     command,

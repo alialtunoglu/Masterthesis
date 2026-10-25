@@ -7,12 +7,12 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from src.training.recovery import RecoverySession, TrainingStopped, load_generation
 from src.training.trainer import fit
-from training.kd_config import load_kd_config, merge_kd_config
-from training.kd_strategies import create_distillation_strategy
-from training.kd_trainer import fit_kd
-from training.multi_kd_config import load_multi_kd_config, merge_multi_kd_config
-from training.multi_kd_strategies import create_multi_teacher_strategy
-from training.multi_kd_trainer import fit_multi_teacher_kd
+from src.training.kd_config import load_kd_config, merge_kd_config
+from src.training.kd_strategies import create_distillation_strategy
+from src.training.kd_trainer import fit_kd
+from src.training.multi_kd_config import load_multi_kd_config, merge_multi_kd_config
+from src.training.multi_kd_strategies import create_multi_teacher_strategy
+from src.training.multi_kd_trainer import fit_multi_teacher_kd
 
 
 class ResumeTests(unittest.TestCase):

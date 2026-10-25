@@ -14,8 +14,8 @@ from typing import Any
 
 import psutil
 
-from ui_utils import get_project_root
-from gpu_runtime import GpuBusyError, choose_gpu, discover_gpus
+from app.ui_utils import get_project_root
+from app.gpu_runtime import GpuBusyError, choose_gpu, discover_gpus
 from src.datasets.dataset_registry import DATASETS, SPLITS_DIR
 from src.training.recovery import load_generation, recovery_metadata, validate_resume
 from src.tracking.experiment_taxonomy import enrich_experiment_metadata
@@ -98,7 +98,7 @@ def build_baseline_command(
     early_stopping_patience: int | None = None,
 ) -> list[str]:
     """Build a Windows-safe baseline training command."""
-    command = [sys.executable, "src/training/train_baseline.py"]
+    command = [sys.executable, "-m", "src.training.train_baseline"]
     if config:
         command.extend(["--config", config])
     else:
@@ -166,7 +166,7 @@ def build_teacher_command(
     scheduler_eta_min: float = 0.0,
 ) -> list[str]:
     """Build a Windows-safe teacher training command."""
-    command = [sys.executable, "src/training/train_teacher.py"]
+    command = [sys.executable, "-m", "src.training.train_teacher"]
     if config:
         command.extend(["--config", config])
     else:
@@ -226,7 +226,7 @@ def build_kd_command(
     """Build a Windows-safe KD command from a resolved config snapshot."""
     command = [
         sys.executable,
-        "src/training/train_kd.py",
+        "-m", "src.training.train_kd",
         "--config",
         config,
         "--teacher-run-id",
@@ -243,7 +243,7 @@ def build_multi_kd_command(config: str, *, dry_run: bool = False) -> list[str]:
     """Build a multi-teacher KD command from an immutable config snapshot."""
     command = [
         sys.executable,
-        "src/training/train_multi_kd.py",
+        "-m", "src.training.train_multi_kd",
         "--config",
         config,
     ]
@@ -300,11 +300,11 @@ def _start_queued_job(job: dict[str, Any]) -> dict[str, Any]:
         environment["CUDA_VISIBLE_DEVICES"] = str(job["gpu_id"]) if job["gpu_id"] is not None else ""
     environment["PYTHONUNBUFFERED"] = "1"
     environment["MASTERTHESIS_STOP_FILE"] = str((JOBS_DIR / f"{job_id}.stop").resolve())
-    source_paths = [str(get_project_root() / "src"), str(get_project_root())]
-    environment["PYTHONPATH"] = os.pathsep.join([*source_paths, environment.get("PYTHONPATH", "")]).rstrip(os.pathsep)
+    environment.pop("PYTHONPATH", None)
+    environment["MASTERTHESIS_PROJECT_ROOT"] = str(get_project_root())
     with log_path.open("a", encoding="utf-8") as log_file:
         process = subprocess.Popen(
-            ([sys.executable, "-u", str(Path(__file__).with_name("job_process.py")),
+            ([sys.executable, "-u", "-m", "app.job_process",
               "--gpu", str(job["gpu_id"]) if job["gpu_id"] is not None else "cpu", "--", *job["command"]]
              if "gpu_id" in job else job["command"]),
             cwd=get_project_root(),
@@ -421,7 +421,7 @@ def list_jobs() -> list[dict[str, Any]]:
         except (json.JSONDecodeError, OSError):
             continue
         jobs.append(update_job_status_if_finished(job))
-    from lab_runs import list_lab_jobs
+    from app.lab_runs import list_lab_jobs
     return jobs + list_lab_jobs(get_project_root())
 
 
@@ -450,7 +450,7 @@ def promote_queued_jobs(jobs: list[dict[str, Any]] | None = None) -> list[dict[s
                 jobs.append(json.loads(job_file.read_text(encoding="utf-8")))
             except (json.JSONDecodeError, OSError):
                 continue
-    from lab_runs import list_lab_jobs
+    from app.lab_runs import list_lab_jobs
     native_ids = {job.get("job_id") for job in jobs}
     jobs = [*jobs, *(job for job in list_lab_jobs(get_project_root()) if job.get("job_id") not in native_ids)]
     running_jobs = [update_job_status_if_finished(job) for job in jobs if job.get("status") in {"running", "stop_requested"}]
@@ -657,7 +657,8 @@ def _reconcile_mlflow_status(job: dict[str, Any], status: str) -> None:
         return
     try:
         from mlflow.tracking import MlflowClient
-        MlflowClient(tracking_uri=tracking_uri).set_terminated(str(run_id), status=status)
+        from src.tracking.mlflow_tracker import resolve_tracking_uri
+        MlflowClient(tracking_uri=resolve_tracking_uri(tracking_uri)).set_terminated(str(run_id), status=status)
     except Exception as error:
         job["mlflow_status_warning"] = str(error)
 
@@ -681,7 +682,7 @@ def request_epoch_stop(job: dict[str, Any]) -> dict[str, Any]:
     if not bool(((recovery.get("metadata") or {}).get("recovery") or {}).get("enabled")):
         raise ValueError("Epoch-safe stop requires confirmation that recovery is enabled for this job.")
     if job.get("execution_origin") == "lab_notebook":
-        from lab_runs import request_notebook_stop
+        from app.lab_runs import request_notebook_stop
         return request_notebook_stop(get_project_root(), job)
     stop_path = JOBS_DIR / f"{job['job_id']}.stop"
     stop_path.parent.mkdir(parents=True, exist_ok=True)
@@ -745,7 +746,7 @@ def enqueue_resume_job(generation: str | Path, backup_dir: str | Path | None = N
     }
     if stage not in scripts:
         raise ValueError(f"Unsupported recovery stage: {stage}")
-    command = [sys.executable, scripts[stage], "--config", config_path]
+    command = [sys.executable, "-m", scripts[stage].removesuffix(".py").replace("/", "."), "--config", config_path]
     experiment = config.get("experiment", config)
     if stage == "knowledge_distillation":
         teacher_run = experiment.get("teacher_run_id")
@@ -871,11 +872,10 @@ def start_queue_worker() -> dict[str, Any]:
     if status.get("process_alive"):
         return {**status, "started": False, "message": "Kuyruk işleyicisi zaten açık veya başlatılıyor."}
 
-    command = [sys.executable, "-u", "app/queue_worker.py"]
+    command = [sys.executable, "-u", "-m", "app.queue_worker"]
     environment = os.environ.copy()
-    environment["PYTHONPATH"] = os.pathsep.join([
-        str(get_project_root()), str(get_project_root() / "src"), environment.get("PYTHONPATH", "")
-    ]).rstrip(os.pathsep)
+    environment.pop("PYTHONPATH", None)
+    environment["MASTERTHESIS_PROJECT_ROOT"] = str(get_project_root())
     start_time = datetime.now().isoformat(timespec="seconds")
     creationflags = 0
     if sys.platform.startswith("win"):
@@ -892,6 +892,7 @@ def start_queue_worker() -> dict[str, Any]:
                 stdin=subprocess.DEVNULL,
                 text=True,
                 creationflags=creationflags,
+                start_new_session=os.name != "nt",
                 env=environment,
             )
     except OSError as error:

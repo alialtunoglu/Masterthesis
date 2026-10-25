@@ -7,7 +7,8 @@ from pathlib import Path
 import subprocess
 import sys
 
-from gpu_runtime import gpu_lock
+from app.gpu_runtime import gpu_lock
+from src.utils.project import get_project_root
 
 
 def main():
@@ -18,7 +19,7 @@ def main():
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     if not command:
         parser.error("A native training command is required.")
-    root = Path(__file__).resolve().parents[1]
+    root = get_project_root()
     lock = nullcontext() if args.gpu == "cpu" else gpu_lock(root, args.gpu)
     try:
         with lock as owned_lock:

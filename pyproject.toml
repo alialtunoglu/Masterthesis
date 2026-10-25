@@ -36,18 +36,24 @@ dev = [
 ]
 
 [project.scripts]
-train-baseline = "training.train_baseline:main"
-analyze-datasets = "datasets.analyze_datasets:main"
-create-splits = "datasets.create_splits:main"
+train-baseline = "src.training.train_baseline:main"
+train-teacher = "src.training.train_teacher:main"
+train-kd = "src.training.train_kd:main"
+train-multi-kd = "src.training.train_multi_kd:main"
+experiment-queue = "app.queue_worker:main"
+analyze-datasets = "src.datasets.analyze_datasets:main"
+create-splits = "src.datasets.create_splits:main"
 
 [tool.setuptools]
-package-dir = { "" = "src" }
+package-dir = { "" = "." }
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["src", "src.*", "app", "app.*"]
 
 [tool.setuptools.package-data]
-"models._micronet" = ["LICENSE"]
+"src.models._micronet" = ["LICENSE"]
+"app" = ["pages/*.py"]
 
 [tool.ruff]
 line-length = 100

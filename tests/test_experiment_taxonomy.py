@@ -39,7 +39,7 @@ class ExperimentTaxonomyTests(unittest.TestCase):
             enrich_experiment_metadata({"stage": "teacher_cnn", "command": ["python", "train_baseline.py"], "model": "resnet18"})
 
     def test_enqueue_persists_classification(self):
-        import experiment_runner as runner
+        import app.experiment_runner as runner
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             with patch.object(runner, "RUNS_DIR", root / "runs"), patch.object(runner, "JOBS_DIR", root / "runs/jobs"), \

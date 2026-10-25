@@ -181,8 +181,8 @@ class PortableNotebookTests(unittest.TestCase):
             )
         )
 
-        self.assertIn("environment['PYTHONPATH']", source)
-        self.assertIn("str(Path('src').resolve())", source)
+        self.assertIn("environment.pop('PYTHONPATH', None)", source)
+        self.assertIn("environment['MASTERTHESIS_PROJECT_ROOT']", source)
         self.assertIn("environment['PYTHONUNBUFFERED'] = '1'", source)
         self.assertIn("subprocess.Popen(", source)
         self.assertIn("stderr=subprocess.STDOUT", source)

@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from typing import Any
+from src.utils.project import get_project_root
 
 
 DEFAULT_EXPERIMENT_NAME = "MasterThesis-Baseline"
+
+
+def resolve_tracking_uri(uri: str | None) -> str:
+    if uri is None:
+        return (get_project_root() / "mlruns").resolve().as_uri()
+    prefix = "sqlite:///"
+    if uri.startswith(prefix) and uri != prefix + ":memory:":
+        database, separator, query = uri[len(prefix):].partition("?")
+        if database and not database.startswith("/") and not Path(database).is_absolute() and not PureWindowsPath(database).is_absolute():
+            return prefix + (get_project_root() / database).resolve().as_posix() + separator + query
+    return uri
 
 
 def _import_mlflow():
@@ -26,7 +38,7 @@ def setup_mlflow(experiment_name: str = DEFAULT_EXPERIMENT_NAME, tracking_uri: s
     mlflow = _import_mlflow()
     if tracking_uri is None:
         os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
-        tracking_uri = Path("mlruns").resolve().as_uri()
+    tracking_uri = resolve_tracking_uri(tracking_uri)
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
 

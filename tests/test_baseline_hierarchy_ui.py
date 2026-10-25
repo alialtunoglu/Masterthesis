@@ -14,7 +14,7 @@ def by_label(widgets, label):
 
 class BaselineHierarchyUITests(unittest.TestCase):
     def test_conflicting_legacy_job_does_not_crash_overview_or_monitor(self):
-        from experiment_ui import job_identity
+        from app.experiment_ui import job_identity
 
         job = {"job_id": "conflict", "stage": "teacher_cnn", "model": "resnet18",
                "dataset": "plantvillage", "status": "finished",
@@ -22,7 +22,7 @@ class BaselineHierarchyUITests(unittest.TestCase):
                "log_path": "runs/logs/missing-test.log"}
         self.assertIn("Sınıflandırılamayan deney", job_identity(job))
         self.assertEqual(job["stage"], "teacher_cnn")
-        with patch("experiment_runner.list_jobs", return_value=[job]), patch("experiment_runner.get_recovery_status", return_value={}):
+        with patch("app.experiment_runner.list_jobs", return_value=[job]), patch("app.experiment_runner.get_recovery_status", return_value={}):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
             self.assertFalse(app.exception)
             app.switch_page("pages/3_Job_Monitor.py").run(timeout=60)
@@ -45,7 +45,7 @@ class BaselineHierarchyUITests(unittest.TestCase):
     def test_legacy_student_jobs_are_filterable_as_baseline_student_cnn(self):
         job = {"job_id": "old", "model": "resnet18", "dataset": "plantvillage", "status": "finished",
                "command": ["python", "src/training/train_baseline.py"], "log_path": "runs/logs/missing-test.log"}
-        with patch("experiment_runner.list_jobs", return_value=[job]), patch("experiment_runner.get_recovery_status", return_value={}):
+        with patch("app.experiment_runner.list_jobs", return_value=[job]), patch("app.experiment_runner.get_recovery_status", return_value={}):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=60)
             app.switch_page("pages/3_Job_Monitor.py").run(timeout=60)
             self.assertFalse(app.exception)

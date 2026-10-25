@@ -9,8 +9,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from training.kd_features import ConvFeatureAdapter, VectorFeatureAdapter, pooled_feature
-from training.multi_kd_config import MultiDistillationConfig
+from src.training.kd_features import ConvFeatureAdapter, VectorFeatureAdapter, pooled_feature
+from src.training.multi_kd_config import MultiDistillationConfig
 
 
 @dataclass

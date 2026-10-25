@@ -5,17 +5,17 @@ import uuid
 
 import streamlit as st
 
-from experiment_runner import build_baseline_command, build_teacher_command, start_job, save_job_config_snapshot
-from dataset_view import select_dataset
-from experiment_ui import STAGE_LABELS, open_queued_job
-from portable_notebook import render_notebook_download
-from recovery_view import add_recovery_flags, render_recovery_settings
-from result_loader import safe_read_json
-from ui_utils import get_project_root
+from app.experiment_runner import build_baseline_command, build_teacher_command, start_job, save_job_config_snapshot
+from app.dataset_view import select_dataset
+from app.experiment_ui import STAGE_LABELS, open_queued_job
+from app.portable_notebook import render_notebook_download
+from app.recovery_view import add_recovery_flags, render_recovery_settings
+from app.result_loader import safe_read_json
+from app.ui_utils import get_project_root
 from src.models.model_catalog import get_model_family, get_model_spec
 from src.training.experiment_presets import list_presets
 from src.training.experiment_config import resolve_experiment_config
-from gpu_view import render_gpu_selection
+from app.gpu_view import render_gpu_selection
 
 
 def render_standard_launcher(stage, datasets, models, *, unified=False):

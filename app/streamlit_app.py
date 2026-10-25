@@ -5,9 +5,6 @@ import sys
 
 import streamlit as st
 
-APP_DIR = Path(__file__).resolve().parent
-if str(APP_DIR) not in sys.path:
-    sys.path.insert(0, str(APP_DIR))
 
 st.set_page_config(page_title="MasterThesis · Deney çalışma alanı", layout="wide")
 pages = [

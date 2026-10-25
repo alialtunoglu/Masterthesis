@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from experiment_ui import FAMILY_LABELS, METHOD_LABELS, ROLE_LABELS, status_label
+from app.experiment_ui import FAMILY_LABELS, METHOD_LABELS, ROLE_LABELS, status_label
 
 PREFIX = "monitor_filter_"
 KD_LABELS = {"logit_based": "Logit-based", "feature_based": "Feature-based", "relation_based": "Relation-based"}

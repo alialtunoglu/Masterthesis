@@ -9,10 +9,10 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from experiment_runner import cancel_queued_job, get_queue_worker_status, list_jobs
-from experiment_ui import job_identity, open_queued_job, status_label
-from gpu_view import execution_label, execution_phase, render_gpu_overview
-from experiment_runner import parse_log_progress, read_log_tail
+from app.experiment_runner import cancel_queued_job, get_queue_worker_status, list_jobs
+from app.experiment_ui import job_identity, open_queued_job, status_label
+from app.gpu_view import execution_label, execution_phase, render_gpu_overview
+from app.experiment_runner import parse_log_progress, read_log_tail
 
 st.title("Genel bakış")
 st.caption("Yeni bir deney hazırlayın, devam eden eğitimi izleyin veya sonuçları karşılaştırın.")

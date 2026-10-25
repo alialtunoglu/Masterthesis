@@ -22,7 +22,7 @@ import torch
 try:
     from ..tracking.run_metadata import dataset_fingerprint, protocol_fingerprint, split_fingerprint, source_commit
 except ImportError:
-    from tracking.run_metadata import dataset_fingerprint, protocol_fingerprint, split_fingerprint, source_commit
+    from src.tracking.run_metadata import dataset_fingerprint, protocol_fingerprint, split_fingerprint, source_commit
 
 
 def add_recovery_arguments(parser):

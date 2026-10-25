@@ -116,7 +116,7 @@ class JobFilterTests(unittest.TestCase):
         from unittest.mock import patch
 
         jobs = [dict(JOBS[5], stage="multi_teacher_knowledge_distillation", log_path="runs/logs/missing-filter-test.log")]
-        with patch("experiment_runner.list_jobs", return_value=jobs), patch("experiment_runner.get_recovery_status", return_value={}):
+        with patch("app.experiment_runner.list_jobs", return_value=jobs), patch("app.experiment_runner.get_recovery_status", return_value={}):
             app = AppTest.from_file("app/streamlit_app.py").run(timeout=30)
             app.switch_page("pages/3_Job_Monitor.py").run(timeout=30)
             widget(app.button, "Multi-teacher KD").click().run()

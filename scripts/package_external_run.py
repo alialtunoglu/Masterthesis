@@ -13,7 +13,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from tracking.external_bundle import create_external_bundle
+from src.tracking.external_bundle import create_external_bundle
 
 
 SUMMARY_PATHS = {

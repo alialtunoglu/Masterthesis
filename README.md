@@ -1,5 +1,7 @@
 # MasterThesis Plant Disease KD
 
+Windows/Linux/WSL2 kurulumu ve `PYTHONPATH` gerektirmeyen test/başlatma komutları: [WINDOWS_LINUX_SETUP.md](docs/WINDOWS_LINUX_SETUP.md).
+
 Bu proje, bitki yaprak hastalığı teşhisinde derin öğrenme modelleri için bilgi damıtma yöntemlerinin karşılaştırmalı analizini yürütmek için hazırlanmıştır.
 
 Kısa proje konusu:

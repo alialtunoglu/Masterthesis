@@ -1,8 +1,8 @@
 """Small native GPU controls shared by all launchers and monitoring pages."""
 import streamlit as st
 
-from gpu_runtime import discover_gpus, gpu_is_available
-from ui_utils import get_project_root
+from app.gpu_runtime import discover_gpus, gpu_is_available
+from app.ui_utils import get_project_root
 
 
 @st.cache_data(ttl=5, show_spinner=False)

@@ -16,9 +16,9 @@ class DynamicLauncherTests(unittest.TestCase):
     def test_registration_publishes_into_all_six_launcher_routes_without_restart(self):
         from contextlib import ExitStack
         from test_dataset_registration import make_dataset
-        import dataset_view
-        import standard_launcher
-        import kd_launcher
+        import app.dataset_view as dataset_view
+        import app.standard_launcher as standard_launcher
+        import app.kd_launcher as kd_launcher
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             make_dataset(root)
@@ -51,9 +51,9 @@ class DynamicLauncherTests(unittest.TestCase):
             from src.datasets.dataset_runtime import create_registered_split
             revision = DatasetRuntimeTests().prepare(root)
             create_registered_split(root, revision.dataset_id, revision.revision, dict(train=.7, val=.15, test=.15), 42)
-            with patch("dataset_view.get_project_root", return_value=root):
+            with patch("app.dataset_view.get_project_root", return_value=root):
                 app = AppTest.from_string(
-                    "from dataset_view import select_dataset\n"
+                    "from app.dataset_view import select_dataset\n"
                     "value = select_dataset(key='fixture')\n"
                     "import streamlit as st\nst.write(value[0])"
                 ).run(timeout=30)

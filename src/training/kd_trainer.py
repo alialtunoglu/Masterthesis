@@ -8,11 +8,11 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 
-from evaluation.metrics import compute_classification_metrics
-from training.kd_config import KDConfig
-from training.kd_features import FeatureCapture
-from training.optimization import is_improvement, step_scheduler
-from utils.io import ensure_dir
+from src.evaluation.metrics import compute_classification_metrics
+from src.training.kd_config import KDConfig
+from src.training.kd_features import FeatureCapture
+from src.training.optimization import is_improvement, step_scheduler
+from src.utils.io import ensure_dir
 
 
 MetricLogger = Callable[[dict[str, float], int | None], None]

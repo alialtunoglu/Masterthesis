@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader, TensorDataset
 class BaselineProtocolTests(unittest.TestCase):
     def setUp(self):
         global baseline
-        from training import train_baseline as baseline
+        from src.training import train_baseline as baseline
 
     def test_cosine_and_patience_survive_config_validation(self):
         with patch.object(sys, "argv", ["baseline", "--dataset", "plantpathology2021", "--model", "mobilenet_v3_small"]):
@@ -52,7 +52,7 @@ class BaselineProtocolTests(unittest.TestCase):
                 stack.enter_context(patch.object(baseline, name, value))
             for name in ("setup_mlflow", "end_run", "log_artifact", "log_text", "log_metrics", "log_params", "write_training_artifacts", "append_summary_row"):
                 stack.enter_context(patch.object(baseline, name, lambda *args, **kwargs: None))
-            stack.enter_context(patch("training.trainer.evaluate", return_value=evaluation))
+            stack.enter_context(patch("src.training.trainer.evaluate", return_value=evaluation))
             stack.enter_context(patch.dict("os.environ", {"TORCH_HOME": str(root / "cache")}))
             baseline.main()
             self.assertEqual(len(histories[0]), 3)
@@ -78,12 +78,12 @@ class BaselineProtocolTests(unittest.TestCase):
         from app.experiment_runner import build_baseline_command
         command = build_baseline_command("plantpathology2021", "mobilenet_v3_small", None, 30, 32, 224, .0003, .0001, True, False,
                                          scheduler="cosine", early_stopping_patience=7)
-        with patch.object(sys, "argv", command[1:]):
+        with patch.object(sys, "argv", command[2:]):
             config = baseline.build_final_config(baseline.parse_args())
         self.assertEqual((config["scheduler"], config["early_stopping_patience"]), ("cosine", 7))
 
     def test_new_run_names_leave_room_for_windows_recovery_files(self):
-        from tracking.experiment_naming import build_unique_run_name
+        from src.tracking.experiment_naming import build_unique_run_name
         root = Path(__file__).resolve().parents[1]
         for stage, prefix, model in (("baseline", "results/baseline/runs", "mobilenet_v3_small"),
                                      ("teacher_cnn", "results/teachers/cnn/runs", "regnet_y_8gf")):
@@ -103,7 +103,7 @@ scheduler = next(w for w in app.selectbox if w.label == 'Scheduler')
 scheduler.set_value('cosine').run(timeout=60)
 next(w for w in app.number_input if w.label == 'Early stopping patience').set_value(7).run(timeout=60)
 assert not app.exception
-command = next(item.value for item in app.code if 'src/training/train_baseline.py' in item.value)
+command = next(item.value for item in app.code if 'src.training.train_baseline' in item.value)
 assert '--scheduler cosine' in command
 assert '--early-stopping-patience 7' in command
 assert next(w for w in app.button if w.label == 'Eğitimi Başlat').disabled

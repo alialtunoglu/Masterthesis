@@ -6,11 +6,11 @@ import uuid
 import pandas as pd
 import streamlit as st
 
-from dataset_view import select_dataset
-from experiment_runner import build_kd_command, build_multi_kd_command, save_job_config_snapshot, start_job
-from experiment_ui import open_queued_job
-from recovery_view import render_recovery_settings
-from ui_utils import get_project_root
+from app.dataset_view import select_dataset
+from app.experiment_runner import build_kd_command, build_multi_kd_command, save_job_config_snapshot, start_job
+from app.experiment_ui import open_queued_job
+from app.recovery_view import render_recovery_settings
+from app.ui_utils import get_project_root
 from src.models.model_catalog import STUDENT_MODELS, CNN_TEACHER_MODELS, VISION_TRANSFORMER_TEACHER_MODELS, get_model_spec
 from src.training.experiment_config import resolve_experiment_config
 from src.training.experiment_presets import list_presets, compose_preset
@@ -19,14 +19,14 @@ from src.training.multi_kd_config import load_multi_kd_config
 from src.training.teacher_catalog import find_compatible_teacher_runs, validate_teacher_selection
 from src.training.kd_features import default_feature_layer
 from src.training.multi_kd_aggregation import resolve_teacher_weights
-from gpu_view import render_gpu_selection
+from app.gpu_view import render_gpu_selection
 
 KD_LABELS = {"logit_based": "Logit / Response-based", "feature_based": "Feature-based", "relation_based": "Relation-based"}
 
 
 @st.cache_data(ttl=30, show_spinner=False)
 def teacher_candidates(root, dataset, ref, student, image_size):
-    from lab_runs import portable_teacher_candidates
+    from app.lab_runs import portable_teacher_candidates
     rows = find_compatible_teacher_runs(root, ref, student, "logit_based", dataset_name=dataset, image_size=image_size)
     known = {str(row["mlflow_run_id"]) for row in rows}
     return rows + [row for row in portable_teacher_candidates(root, dataset, ref, image_size) if str(row["mlflow_run_id"]) not in known]
@@ -304,7 +304,7 @@ def render_kd_launcher(*, multi=False, unified=False):
     st.page_link("pages/3_Job_Monitor.py", label="Deneyleri ve kuyruğu izle")
     with st.expander("Colab / Kaggle için notebook indir"):
         if enough and not error:
-            from portable_notebook import render_notebook_download
+            from app.portable_notebook import render_notebook_download
             from src.datasets.dataset_runtime import dataset_package
             teachers = payload["teachers"] if multi else chosen
             inputs = [{**item, "dataset_name": dataset, "dataset_ref": ref, "class_names": runtime["class_names"],

@@ -6,10 +6,10 @@ from pathlib import Path
 import pandas as pd
 
 try:
-    from datasets.dataset_registry import DatasetRef
-    from datasets.dataset_runtime import resolve_dataset_runtime
-    from datasets.dataset_registration import sha256_file
-    from models.model_catalog import get_model_spec
+    from src.datasets.dataset_registry import DatasetRef
+    from src.datasets.dataset_runtime import resolve_dataset_runtime
+    from src.datasets.dataset_registration import sha256_file
+    from src.models.model_catalog import get_model_spec
 except ModuleNotFoundError:
     from src.datasets.dataset_registry import DatasetRef
     from src.datasets.dataset_runtime import resolve_dataset_runtime
@@ -65,7 +65,7 @@ def find_compatible_teacher_runs(root: Path, dataset_ref: DatasetRef | dict | No
         raise ValueError("Unknown student model.")
     runtime = resolve_dataset_runtime(root, dataset_ref, dataset_name)
     try:
-        from tracking.run_metadata import split_fingerprint
+        from src.tracking.run_metadata import split_fingerprint
     except ModuleNotFoundError:
         from src.tracking.run_metadata import split_fingerprint
     current_split_hash = split_fingerprint(json.loads(Path(runtime["split_file"]).read_text(encoding="utf-8")))

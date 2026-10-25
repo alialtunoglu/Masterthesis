@@ -9,11 +9,11 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from experiment_runner import get_queue_worker_status, load_dashboard_settings, start_queue_worker, stop_queue_worker, read_log_tail
-from result_loader import load_dataset_summary, load_split_summaries
-from experiment_runner import save_dashboard_settings
-from gpu_view import render_gpu_overview
-from experiment_runner import list_jobs
+from app.experiment_runner import get_queue_worker_status, load_dashboard_settings, start_queue_worker, stop_queue_worker, read_log_tail
+from app.result_loader import load_dataset_summary, load_split_summaries
+from app.experiment_runner import save_dashboard_settings
+from app.gpu_view import render_gpu_overview
+from app.experiment_runner import list_jobs
 
 st.title("Ayarlar")
 st.caption("Yerel çalışma ortamı ve servisler. Bu sayfayı açmak hiçbir işlemi otomatik başlatmaz.")

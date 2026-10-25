@@ -4,7 +4,7 @@ import re
 
 import streamlit as st
 
-from ui_utils import get_project_root
+from app.ui_utils import get_project_root
 from src.datasets.dataset_registry import DatasetDefinition, DatasetRef, list_datasets
 from src.datasets.dataset_registration import discover_datasets, scan_dataset, register_dataset_revision
 from src.datasets.dataset_runtime import create_registered_split, resolve_dataset_runtime

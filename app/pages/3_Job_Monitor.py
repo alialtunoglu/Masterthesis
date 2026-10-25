@@ -13,7 +13,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from experiment_runner import (
+from app.experiment_runner import (
     cancel_queued_job,
     get_job_runtime_seconds,
     get_log_file_info,
@@ -30,11 +30,11 @@ from experiment_runner import (
     stop_queue_worker,
 )
 from src.tracking.experiment_taxonomy import enrich_experiment_metadata
-from experiment_ui import FAMILY_LABELS, job_identity, open_queued_job, status_label
-from job_filters import render_job_filters
-from gpu_view import execution_label, execution_phase, render_gpu_overview
-from run_transfer import can_export, prepare_run_transfer
-from ui_utils import get_project_root
+from app.experiment_ui import FAMILY_LABELS, job_identity, open_queued_job, status_label
+from app.job_filters import render_job_filters
+from app.gpu_view import execution_label, execution_phase, render_gpu_overview
+from app.run_transfer import can_export, prepare_run_transfer
+from app.ui_utils import get_project_root
 
 
 def format_duration(seconds: float | None) -> str:

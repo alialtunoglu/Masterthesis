@@ -12,24 +12,19 @@ from typing import Any
 import pandas as pd
 import torch
 
-CURRENT_DIR = Path(__file__).resolve().parent
-SRC_DIR = CURRENT_DIR.parent
-for path in (SRC_DIR, CURRENT_DIR):
-    if str(path) not in sys.path:
-        sys.path.insert(0, str(path))
 
-from datasets.dataloaders import create_dataloaders
-from datasets.dataset_registry import DATASETS, PROJECT_ROOT, SPLITS_DIR, get_dataset_catalog, DatasetRef
-from datasets.dataset_runtime import resolve_dataset_runtime, verify_dataset_content
-from training.experiment_config import resolve_experiment_config
-from evaluation.metrics import compute_per_class_metrics
-from evaluation.reports import save_confusion_matrix_artifacts, save_learning_curves
-from models.model_factory import STUDENT_MODELS, create_model
-from models.model_catalog import STUDENT_VIT_MODELS
-from tracking.experiment_taxonomy import enrich_experiment_metadata
-from models.model_info import get_model_summary_dict
-from tracking.experiment_naming import build_experiment_name, build_unique_run_name
-from tracking.mlflow_tracker import (
+from src.datasets.dataloaders import create_dataloaders
+from src.datasets.dataset_registry import DATASETS, PROJECT_ROOT, SPLITS_DIR, get_dataset_catalog, DatasetRef
+from src.datasets.dataset_runtime import resolve_dataset_runtime, verify_dataset_content
+from src.training.experiment_config import resolve_experiment_config
+from src.evaluation.metrics import compute_per_class_metrics
+from src.evaluation.reports import save_confusion_matrix_artifacts, save_learning_curves
+from src.models.model_factory import STUDENT_MODELS, create_model
+from src.models.model_catalog import STUDENT_VIT_MODELS
+from src.tracking.experiment_taxonomy import enrich_experiment_metadata
+from src.models.model_info import get_model_summary_dict
+from src.tracking.experiment_naming import build_experiment_name, build_unique_run_name
+from src.tracking.mlflow_tracker import (
     end_run,
     log_artifact,
     log_metrics,
@@ -38,12 +33,12 @@ from tracking.mlflow_tracker import (
     setup_mlflow,
     start_run,
 )
-from training.trainer import fit
-from training.kd_config import TrainingConfig
-from training.optimization import create_optimizer, create_scheduler
-from utils.io import ensure_dir, load_json, save_json, upsert_result_row
-from utils.seed import set_seed
-from training.recovery import (add_recovery_arguments, create_recovery, recovery_settings,
+from src.training.trainer import fit
+from src.training.kd_config import TrainingConfig
+from src.training.optimization import create_optimizer, create_scheduler
+from src.utils.io import ensure_dir, load_json, save_json, upsert_result_row
+from src.utils.seed import set_seed
+from src.training.recovery import (add_recovery_arguments, create_recovery, recovery_settings,
                                mark_recovery, TrainingStopped)
 
 
@@ -229,12 +224,7 @@ def build_final_config(args: argparse.Namespace) -> dict[str, Any]:
     return enrich_experiment_metadata(resolve_experiment_config(PROJECT_ROOT, config))
 
 
-def select_device(device_arg: str) -> torch.device:
-    if device_arg == "auto":
-        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if device_arg == "cuda" and not torch.cuda.is_available():
-        raise RuntimeError("CUDA was requested but is not available.")
-    return torch.device(device_arg)
+from src.utils.device import select_device
 
 
 def resolve_split_file(dataset_key: str) -> Path:

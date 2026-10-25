@@ -16,7 +16,7 @@ for path in (SRC_DIR, CURRENT_DIR):
         sys.path.insert(0, str(path))
 
 from dataset_registry import PROJECT_ROOT
-from utils.io import load_json
+from src.utils.io import load_json
 
 
 class SplitJsonImageDataset(Dataset):

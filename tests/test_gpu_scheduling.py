@@ -9,10 +9,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
-import experiment_runner as runner
-import gpu_runtime as gpu
-
-
+import app.experiment_runner as runner
+import app.gpu_runtime as gpu
 class GpuSchedulingTests(unittest.TestCase):
     def test_inventory_is_read_without_initializing_torch(self):
         with patch.object(gpu.subprocess, "check_output", return_value="0, NVIDIA A, 100, 16000, 12\n1, NVIDIA B, 200, 16000, 5\n"):

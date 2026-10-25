@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from ui_utils import get_project_root
+from app.ui_utils import get_project_root
 
 
 def _default_mlflow_client(tracking_uri: str):

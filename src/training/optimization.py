@@ -6,7 +6,7 @@ from collections.abc import Iterable
 
 import torch
 
-from training.kd_config import TrainingConfig
+from src.training.kd_config import TrainingConfig
 
 
 def create_optimizer(parameters: Iterable[torch.nn.Parameter], config: TrainingConfig):

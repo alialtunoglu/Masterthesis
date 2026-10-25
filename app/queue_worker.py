@@ -10,12 +10,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-APP_DIR = Path(__file__).resolve().parent
-for path in (APP_DIR.parent, APP_DIR):
-    if str(path) not in sys.path:
-        sys.path.insert(0, str(path))
 
-from experiment_runner import (  # noqa: E402
+from app.experiment_runner import (  # noqa: E402
     QUEUE_WORKER_HEARTBEAT_PATH,
     QUEUE_WORKER_STATE_PATH,
     get_project_root,

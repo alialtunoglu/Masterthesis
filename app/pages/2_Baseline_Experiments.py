@@ -7,7 +7,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from standard_launcher import render_standard_launcher
+from app.standard_launcher import render_standard_launcher
 from src.models.model_catalog import STUDENT_CNN_MODELS
 
 render_standard_launcher(

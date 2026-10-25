@@ -21,7 +21,7 @@ from plantpathology_utils import (
     load_train_csv,
     summarize_labels,
 )
-from utils.io import ensure_dir, save_csv
+from src.utils.io import ensure_dir, save_csv
 
 
 def analyze_imagefolder(dataset_key: str) -> tuple[dict, list[dict]]:

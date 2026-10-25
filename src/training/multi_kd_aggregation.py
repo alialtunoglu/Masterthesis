@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from typing import Sequence
 
-from training.multi_kd_config import TeacherConfig
+from src.training.multi_kd_config import TeacherConfig
 
 
 def resolve_teacher_weights(

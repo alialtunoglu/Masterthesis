@@ -7,11 +7,9 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
-import lab_runs
-import run_transfer
-import experiment_runner as runner
-
-
+import app.lab_runs as lab_runs
+import app.run_transfer as run_transfer
+import app.experiment_runner as runner
 def attempt_fixture(root, *, status="running", dry=False):
     attempt = root / "lab_state/01_fixture__abcdef123456"
     attempt.mkdir(parents=True)
@@ -159,7 +157,7 @@ class LabRunManagementTests(unittest.TestCase):
             self.assertEqual(job["source_commit"], "a" * 40)
 
     def test_portable_lab_teacher_metadata_is_preserved_for_strict_validation(self):
-        import kd_launcher
+        import app.kd_launcher as kd_launcher
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "lab_notebooks").mkdir()

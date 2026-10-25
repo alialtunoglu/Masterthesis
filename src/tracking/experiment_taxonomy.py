@@ -3,7 +3,7 @@
 from pathlib import PurePosixPath
 
 try:
-    from models.model_catalog import get_model_family
+    from src.models.model_catalog import get_model_family
 except ModuleNotFoundError:
     from src.models.model_catalog import get_model_family
 

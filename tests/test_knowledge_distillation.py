@@ -6,12 +6,12 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from models.model_factory import create_model
-from training.kd_config import load_kd_config
-from training.kd_features import FEATURE_LAYER_REGISTRY, infer_feature_shapes
-from training.kd_strategies import create_distillation_strategy
-from training.kd_trainer import freeze_teacher, train_kd_epoch
-from training.optimization import create_optimizer, create_scheduler, is_improvement
+from src.models.model_factory import create_model
+from src.training.kd_config import load_kd_config
+from src.training.kd_features import FEATURE_LAYER_REGISTRY, infer_feature_shapes
+from src.training.kd_strategies import create_distillation_strategy
+from src.training.kd_trainer import freeze_teacher, train_kd_epoch
+from src.training.optimization import create_optimizer, create_scheduler, is_improvement
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

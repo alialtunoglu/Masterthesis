@@ -27,7 +27,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertNotEqual(validation.generator.initial_seed(), test.generator.initial_seed())
 
     def test_kd_recovery_settings_survive_config_round_trip(self):
-        from training.kd_config import load_kd_config, merge_kd_config
+        from src.training.kd_config import load_kd_config, merge_kd_config
         config = load_kd_config({'experiment': {}, 'training': {}, 'distillation': {},
                                  'recovery': {'enabled': False, 'backup_dir': 'backup'}})
         self.assertFalse(config.to_dict()['recovery']['enabled'])
@@ -36,7 +36,7 @@ class RecoveryTests(unittest.TestCase):
         self.assertIsNone(cleared.recovery.backup_dir)
 
     def test_multi_kd_recovery_override_is_not_dropped(self):
-        from training.multi_kd_config import load_multi_kd_config, merge_multi_kd_config
+        from src.training.multi_kd_config import load_multi_kd_config, merge_multi_kd_config
         path = next(Path("configs/multi_teacher_knowledge_distillation").glob("**/*.json"))
         config = load_multi_kd_config(path)
         updated = merge_multi_kd_config(config, {"recovery": {"enabled": False, "backup_dir": None}})

@@ -7,7 +7,9 @@ import json
 from pathlib import Path
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+from src.utils.project import get_project_root
+
+PROJECT_ROOT = get_project_root()
 SEED = 42
 SPLIT_RATIO = {"train": 0.70, "val": 0.15, "test": 0.15}
 

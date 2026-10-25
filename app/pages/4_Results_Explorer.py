@@ -13,7 +13,7 @@ APP_DIR = Path(__file__).resolve().parents[1]
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-from experiment_removal import (
+from app.experiment_removal import (
     ExperimentActiveError,
     ExperimentRemovalError,
     ExperimentRemovalService,
@@ -22,17 +22,17 @@ from experiment_removal import (
     RunJobMatch,
     find_jobs_for_run,
 )
-from experiment_runner import list_jobs, parse_log_progress, read_log_tail
-from external_run_import import (
+from app.experiment_runner import list_jobs, parse_log_progress, read_log_tail
+from app.external_run_import import (
     ExternalRunImportError,
     import_external_bundle,
     scan_import_inbox,
 )
-from result_loader import load_csv_if_exists
-from ui_utils import get_project_root, show_dataframe_or_warning
-from comparison_view import render_comparison
-from dataset_view import filter_result_identity
-from experiment_ui import classify_results, FAMILY_LABELS
+from app.result_loader import load_csv_if_exists
+from app.ui_utils import get_project_root, show_dataframe_or_warning
+from app.comparison_view import render_comparison
+from app.dataset_view import filter_result_identity
+from app.experiment_ui import classify_results, FAMILY_LABELS
 
 
 BASELINE_TABLES = {
@@ -511,7 +511,7 @@ def _render_interrupted_removal_controls(selected_job: dict[str, object]) -> Non
 st.set_page_config(page_title="Sonuçlar", layout="wide")
 st.title("Sonuçlar")
 st.caption("Veri seti bazında sonuçları inceleyin; artifactlere, içe aktarmaya ve karşılaştırma raporuna aşağıdaki sekmelerden ulaşın.")
-from experiment_ui import compact_results
+from app.experiment_ui import compact_results
 
 tabs = st.tabs(["Sonuçlar", "Grafikler", "Artifactler", "İçe Aktar", "Karşılaştırma ve Rapor"])
 

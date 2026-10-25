@@ -6,15 +6,15 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from training.multi_kd_aggregation import resolve_teacher_weights
-from training.multi_kd_config import (
+from src.training.multi_kd_aggregation import resolve_teacher_weights
+from src.training.multi_kd_config import (
     TeacherConfig,
     load_multi_kd_config,
     validate_multi_kd_config,
 )
-from training.multi_kd_strategies import create_multi_teacher_strategy
-from training.multi_kd_trainer import train_multi_teacher_epoch
-from training.train_multi_kd import build_paths, build_run_name
+from src.training.multi_kd_strategies import create_multi_teacher_strategy
+from src.training.multi_kd_trainer import train_multi_teacher_epoch
+from src.training.train_multi_kd import build_paths, build_run_name
 
 
 ROOT = Path(__file__).resolve().parents[1]

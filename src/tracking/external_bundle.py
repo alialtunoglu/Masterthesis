@@ -137,7 +137,7 @@ def create_external_bundle(
     package = None
     if dataset_ref:
         try:
-            from datasets.dataset_runtime import dataset_package
+            from src.datasets.dataset_runtime import dataset_package
         except ModuleNotFoundError:
             from src.datasets.dataset_runtime import dataset_package
         package = dataset_package(project_root, dataset_ref)

@@ -6,11 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-
-
-def get_project_root() -> Path:
-    """Return the project root directory."""
-    return Path(__file__).resolve().parents[1]
+from src.utils.project import get_project_root
 
 
 def config_selection_mismatches(

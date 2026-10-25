@@ -7,9 +7,9 @@ import re
 EXTENSIBLE_DATASET_API = 2
 
 try:
-    from datasets.dataset_registry import DATASETS
-    from datasets.dataset_runtime import resolve_dataset_runtime
-    from models.model_catalog import get_model_spec
+    from src.datasets.dataset_registry import DATASETS
+    from src.datasets.dataset_runtime import resolve_dataset_runtime
+    from src.models.model_catalog import get_model_spec
 except ModuleNotFoundError:
     from src.datasets.dataset_registry import DATASETS
     from src.datasets.dataset_runtime import resolve_dataset_runtime

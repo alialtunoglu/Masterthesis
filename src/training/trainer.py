@@ -10,8 +10,8 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-from evaluation.metrics import compute_classification_metrics
-from utils.io import ensure_dir
+from src.evaluation.metrics import compute_classification_metrics
+from src.utils.io import ensure_dir
 
 
 MetricLogger = Callable[[dict[str, float], int | None], None]

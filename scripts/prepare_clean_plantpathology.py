@@ -9,12 +9,12 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from datasets.dataset_registration import (
+from src.datasets.dataset_registration import (
     _linked, atomic_json, contained_path, digest_json, register_dataset_revision,
     registry_lock, scan_dataset, sha256_file,
 )
-from datasets.dataset_registry import DatasetDefinition
-from datasets.dataset_runtime import create_registered_split
+from src.datasets.dataset_registry import DatasetDefinition
+from src.datasets.dataset_runtime import create_registered_split
 
 DATASET_ID = "plantpathology2021_clean"
 SOURCE_SPLIT = "splits/plantpathology2021_seed42_70_15_15.json"
